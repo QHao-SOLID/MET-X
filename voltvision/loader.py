@@ -41,6 +41,7 @@ def ensure_methods(root=None, methods=None):
     for name, nb in (methods or CORE_METHODS).items():
         if name in PRICERS:
             continue
+        print(f"loader: {nb} -> regime '{name}'")
         src = calc_source(root / nb, name)
         exec(compile(src, nb, 'exec'), {'__name__': f'voltvision_method_{name}'})
         if name not in PRICERS:

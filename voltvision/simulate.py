@@ -1,251 +1,434 @@
 """Premium-independent simulation engine (bread and butter).
 
 What lives here:
-  gen()          builds one book of policies (risk attributes only, no claims,
-                 NO premium: the tariff base is computed by the tariff pricer
-                 in 02a_tariff.ipynb from the book attributes).
-                 Used for the starting book (prefix INIT) and yearly entrants (ENT).
-  claim_lambda() Poisson rate per policy: log-linear rating model on driver,
-                 vehicle, risk flags, behavior, car age, NCD, coverage.
-  loading()      tariff loading per policy: driver band x vehicle-age factor.
-  simulate()     evolves a book year by year: age -> frequency -> peril ->
-                 severity -> retention -> NCD update -> record -> entrants.
-                 Output has claims + labels, NEVER premium (pricing.py adds it).
+  gen()           builds one book of policies (risk attributes only, no claims,
+                  no premium). Used for the starting book (INIT) and yearly
+                  entrants (ENT). Every number comes from cfg (base_template).
+  claim_lambda()  Poisson rate per policy: log-linear rating model.
+  loading()       tariff-style loading per policy (driver band × car age).
+  simulate()      evolves a book year by year: age → frequency → peril →
+                  severity → retention → NCD update → entrants.
+  simulate_book() convenience wrapper (with optional cache) for callers that
+                  need a complete book — e.g. the ML methods' training data.
 
-Who calls it: 01_simulation.ipynb, 03_main.ipynb, run_all.py.
-Output columns follow config.COLS (POLID first).
-
-TODO (improvement backlog, behavior intentionally unchanged):
-  - FLOOD/THEFT thresholds below are complemented vs full risk_pct
-    (Peninsular flood-True 40% here vs 60% full; East flood ~100% vs 0%).
-    Align to full when DGP change approved.
-  - Optional EV-ramp entrant mix / entrant growth (full _entrant_vehicle_pct).
+Contract:
+  - Output columns follow schema.COLS (POLID first); never premium columns.
+  - Same seed + same cfg = identical book (local RNG, no globals).
+  - Draw ORDER is part of reproducibility: helpers below keep the legacy
+    order (and float arithmetic order) so refactors stay number-identical.
 """
+
+import json
 
 import numpy as np
 import pandas as pd
 
-from .config import BANDS, COLS, PERIL_DIST
+from .schema import COLS
 
 
-def _p(w):
-    # Turn any weights into probabilities that sum to exactly 1,
-    # so np.random.choice never rejects them over float dust.
-    a = np.array(list(w), float)
+def normalize_weights(weights):
+    """Turn any weights into probabilities summing to exactly 1.
+
+    np.random.choice rejects floats that sum to 0.9999999; normalizing keeps
+    the callers free of epsilon guards.
+    """
+    a = np.array(list(weights), float)
     return a / a.sum()
 
 
-def gen(cfg, vehicle_pct, seed, year=None, prefix='INIT', n=None):
-    # Build one book of n policies from the CFG assumptions.
-    # Pure risk attributes: no claims, no premium, no SIM_YEAR yet.
-    # Same seed + same inputs = same book (reproducible).
-    n = int(n or cfg['n'])
-    rng = np.random.default_rng(seed)
-    yr = year or cfg['cohort_year']
+# ---------------------------------------------------------------------------
+# Book generation, split into named steps (called in order by gen()).
+# ---------------------------------------------------------------------------
+
+def _draw_product_mix(cfg, vehicle_pct, rng, n):
+    """Coverage, fuel type and region — three independent categorical draws."""
     df = pd.DataFrame(index=range(n))
-
-    # Product mix: coverage, fuel type, region — independent draws.
-    df['COVERAGE_TYPE'] = rng.choice(list(cfg['coverage_pct']), p=_p(cfg['coverage_pct'].values()), size=n)
-    df['VEHICLE_TYPE'] = rng.choice(list(vehicle_pct), p=_p(vehicle_pct.values()), size=n)
-    df['REGION'] = rng.choice(list(cfg['region_pct']), p=_p(cfg['region_pct'].values()), size=n)
-
-    # Sum assured: log-normal per fuel type (EVs cost more to replace),
-    # rounded to RM1,000 because tariff tables step per thousand.
-    sa = np.zeros(n)
-    for vt, (lam, sp) in cfg['sa_stats'].items():
-        m = df['VEHICLE_TYPE'].values == vt
-        sa[m] = rng.lognormal(np.log(lam), sp, int(m.sum()))
-    df['SUM_ASSURED'] = np.round(sa / 1000) * 1000
-
-    # Engine band: fixed hand-set mix, small cars dominant.
-    df['ENGINE_CAPACITY'] = rng.choice(BANDS, p=_p(cfg['engine_weights']), size=n)
-
-    # Driver: draw the generation band first, then an exact age inside it.
-    df['DRIVER_AGE_CAT'] = rng.choice(list(cfg['generation_pct']), p=_p(cfg['generation_pct'].values()), size=n)
-    lo = np.array([cfg['age_bands'][c][0] for c in df['DRIVER_AGE_CAT']])
-    hi = np.array([cfg['age_bands'][c][1] for c in df['DRIVER_AGE_CAT']])
-    df['DRIVER_AGE'] = rng.integers(lo, hi)
-    df['DRIVER_GENDER'] = rng.choice(list(cfg['gender_pct']), p=_p(cfg['gender_pct'].values()), size=n)
-
-    # Car age at inception: band median plus noise, clipped to 0-10 years.
-    ca = np.zeros(n)
-    for c, med in cfg['car_age_median'].items():
-        m = df['DRIVER_AGE_CAT'].values == c
-        ca[m] = np.clip(np.round(med + rng.normal(0, cfg['car_age_sigma'], int(m.sum()))), 0, 10)
-    df['CAR_AGE'] = ca.astype(int)
-
-    # Region risk flags. NOTE the thresholds read as P(False): random() above
-    # the cut means True, so Peninsular flood-True is 40%, theft-True 60%.
-    # (Full notebook uses the complement — flagged, kept until approved.)
-    fl = np.zeros(n, bool)
-    th = np.zeros(n, bool)
-    for r in df['REGION'].unique():
-        m = df['REGION'].values == r
-        pen = 'Peninsular' in r
-        fl[m] = rng.random(m.sum()) > (0.60 if pen else 0.0)
-        th[m] = rng.random(m.sum()) > (0.40 if pen else 0.15)
-    df['FLOOD_RISK'] = fl
-    df['THEFT_RISK'] = th
-
-    # NCD entry mix: most drivers start at 0 years, few at max discount.
-    df['NCD_YEARS'] = rng.choice([0, 1, 2, 3, 4, 5], p=_p([0.30, 0.22, 0.16, 0.13, 0.10, 0.09]), size=n)
-    # Years beyond 5 keep the top tier (min caps the lookup).
-    df['NCD_LEVEL'] = df['NCD_YEARS'].map(lambda y: cfg['ncd_table'][min(int(y), 5)])
-    df['COHORT_YEAR'] = yr
-
-    # Telematics: harsh braking / speeding / night share -> one composite ->
-    # score 20-100 (higher = safer). Min-max blend keeps each input 0-1 first.
-    hb = np.clip(rng.gamma(2.0, 1.8, size=n), 0, 15)
-    sp = np.clip(rng.gamma(2.0, 6.0, size=n), 0, 50)
-    nd = np.clip(rng.beta(2, 5, size=n) * 40, 0, 50)
-    comp = (0.45 * (hb - hb.min()) / (hb.max() - hb.min())
-            + 0.40 * (sp - sp.min()) / (sp.max() - sp.min())
-            + 0.15 * (nd - nd.min()) / (nd.max() - nd.min()))
-    df['telematics_score'] = np.clip(100 - comp * 80, 20, 100)
-    # Behavior risk: rank-map score to 0.90-1.30 so the WORST driver always
-    # gets 1.30 and the shape stays uniform whatever the raw gammas do.
-    u = np.argsort(np.argsort(df['telematics_score'].values)) / (max(n - 1, 1))
-    df['BEHAVIOR_RISK'] = 1.30 - 0.40 * u
-
-    # Deterministic policy IDs: prefix + cohort year + sequence.
-    df['POLID'] = [f"{prefix}{yr}-{i + 1:06d}" for i in range(n)]
-
+    df['COVERAGE_TYPE'] = rng.choice(list(cfg['coverage_pct']),
+                                     p=normalize_weights(cfg['coverage_pct'].values()), size=n)
+    df['VEHICLE_TYPE'] = rng.choice(list(vehicle_pct),
+                                    p=normalize_weights(vehicle_pct.values()), size=n)
+    df['REGION'] = rng.choice(list(cfg['region_pct']),
+                              p=normalize_weights(cfg['region_pct'].values()), size=n)
     return df
 
 
-def claim_lambda(df, cfg):
-    # Poisson rate per policy: start from the base log-rate, add rating
-    # factors in log space (so they multiply), exponentiate, then scale by
-    # coverage (TPO has no own-damage, TPFT fire/theft only).
-    c = df['DRIVER_AGE_CAT'].values
-    ll = np.full(len(df), cfg['claim_frequency_base']) + 0.40 * (c == 'Young Adults') + 0.26 * (c == 'Seniors')
-    ll += 0.05 * ((c == 'Young Adults') & (df['DRIVER_GENDER'].values == 'Male')) + 0.05 * (df['VEHICLE_TYPE'].values == 'EV')
-    ll += 0.20 * df['FLOOD_RISK'].values + 0.10 * df['THEFT_RISK'].values + np.log(df['BEHAVIOR_RISK'].values)
-    ll += 0.03 * df['CAR_AGE'].values - 0.05 * df['NCD_YEARS'].values
-    mult = np.where(df['COVERAGE_TYPE'].values == 'TPO', 0.45,
-                    np.where(df['COVERAGE_TYPE'].values == 'TPFT', 0.60, 1.0))
-    return np.exp(ll) * mult
+def _draw_sum_assured(df, cfg, rng, n):
+    """Log-normal sum assured per fuel type, rounded to RM1,000 (tariff steps)."""
+    sa = np.zeros(n)
+    for fuel, stats in cfg['sa_stats'].items():
+        mask = df['VEHICLE_TYPE'].values == fuel
+        sa[mask] = rng.lognormal(np.log(stats['median']), stats['spread'], int(mask.sum()))
+    df['SUM_ASSURED'] = np.round(sa / 1000) * 1000
 
 
-def loading(df):
-    # Tariff loading: risky driver bands pay more, older cars pay 3%/year.
-    # Car age capped at 10 so the factor tops out at 1.30.
-    dl = df['DRIVER_AGE_CAT'].map(
-        {"Young Adults": 1.2, "Adults": 1.05, "Mature Adults": 1.0, "Seniors": 1.05}).fillna(1).values
-    return dl * (1 + 0.03 * np.minimum(df['CAR_AGE'].values, 10))
+def _draw_engine_bands(df, cfg, rng, n):
+    """Engine / EV-kW tariff band — a vehicle attribute the book carries."""
+    df['ENGINE_CAPACITY'] = rng.choice(cfg['engine_bands'],
+                                       p=normalize_weights(cfg['engine_weights']), size=n)
 
 
-# Peril draw order. Each coverage maps to a subset with its own mix
-# (see PERIL_DIST); policies can hold several claims joined by '/'.
-PN = ['AD', 'Windscreen', 'Theft', 'Fire', 'TPPD', 'TPBI']
+def _draw_driver_profile(df, cfg, rng, n):
+    """Generation band first, then an exact age inside the band's span."""
+    df['DRIVER_AGE_CAT'] = rng.choice(list(cfg['generation_pct']),
+                                      p=normalize_weights(cfg['generation_pct'].values()), size=n)
+    lo = np.array([cfg['age_bands'][c][0] for c in df['DRIVER_AGE_CAT']])
+    hi = np.array([cfg['age_bands'][c][1] for c in df['DRIVER_AGE_CAT']])
+    df['DRIVER_AGE'] = rng.integers(lo, hi)
+    df['DRIVER_GENDER'] = rng.choice(list(cfg['gender_pct']),
+                                     p=normalize_weights(cfg['gender_pct'].values()), size=n)
 
 
-def simulate(df0, cfg, vehicle_pct, seed, n_years=5, verbose=True):
-    # Evolve the book. Same seed = same claims (local RNG, no globals).
-    # Retention is premium-independent: experience + telematics only.
+def _draw_car_age(df, cfg, rng, n):
+    """Inception car age: band median + noise, clipped to 0–10 years."""
+    car_age = np.zeros(n)
+    for band, median in cfg['car_age_median'].items():
+        mask = df['DRIVER_AGE_CAT'].values == band
+        age = np.round(median + rng.normal(0, cfg['car_age_sigma'], int(mask.sum())))
+        car_age[mask] = np.clip(age, 0, 10)
+    df['CAR_AGE'] = car_age.astype(int)
+
+
+def _draw_risk_flags(df, cfg, rng, n):
+    """Flood / theft booleans, drawn per region in order of first appearance.
+
+    The template stores P(True); the draw is `random() > 1 - p`, which is the
+    legacy comparison exactly (keeping historical results reproducible).
+    """
+    flood = np.zeros(n, bool)
+    theft = np.zeros(n, bool)
+    for region in df['REGION'].unique():
+        mask = df['REGION'].values == region
+        count = int(mask.sum())
+        flood[mask] = rng.random(count) > round(1.0 - cfg['risk_flags']['flood'][region], 12)
+        theft[mask] = rng.random(count) > round(1.0 - cfg['risk_flags']['theft'][region], 12)
+    df['FLOOD_RISK'] = flood
+    df['THEFT_RISK'] = theft
+
+
+def _draw_ncd_entry(df, cfg, rng, n):
+    """Starting NCD years per policy (mix from the template), then the tier."""
+    entry = cfg['ncd_entry']
+    df['NCD_YEARS'] = rng.choice(entry['years'],
+                                 p=normalize_weights(entry['weights']), size=n)
+    df['NCD_LEVEL'] = df['NCD_YEARS'].map(lambda y: cfg['ncd_table'][min(int(y), 5)])
+
+
+def _draw_telematics(df, cfg, rng, n):
+    """Raw driving signals → one safe-score (20–100) → latent BEHAVIOR_RISK.
+
+    Score: blend of min-maxed harsh braking / speeding / night share.
+    Behavior risk: rank-map the score onto [lo, hi] so the worst driver always
+    gets `hi` and the shape stays uniform whatever the raw gammas do.
+    """
+    tel = cfg['telematics']
+    hb = tel['hard_braking']
+    raw_hb = np.clip(rng.gamma(hb['shape'], hb['scale'], size=n), 0, hb['max'])
+    sp = tel['speeding']
+    raw_sp = np.clip(rng.gamma(sp['shape'], sp['scale'], size=n), 0, sp['max'])
+    nd = tel['night_driving']
+    raw_nd = np.clip(rng.beta(nd['a'], nd['b'], size=n) * nd['scale'], 0, nd['max'])
+
+    # Blend of min-maxed inputs. Written `weight * (x - min) / (max - min)`
+    # (multiply before divide) to keep the legacy float rounding bit-exact.
+    w = tel['weights']
+    blend = (w['hard_braking'] * (raw_hb - raw_hb.min()) / (raw_hb.max() - raw_hb.min())
+             + w['speeding'] * (raw_sp - raw_sp.min()) / (raw_sp.max() - raw_sp.min())
+             + w['night_driving'] * (raw_nd - raw_nd.min()) / (raw_nd.max() - raw_nd.min()))
+    df['telematics_score'] = np.clip(tel['score_max'] - blend * tel['score_span'],
+                                     tel['score_min'], tel['score_max'])
+
+    br = cfg['behavior_risk']
+    rank_pct = np.argsort(np.argsort(df['telematics_score'].values)) / (max(n - 1, 1))
+    df['BEHAVIOR_RISK'] = br['hi'] - (br['hi'] - br['lo']) * rank_pct
+
+
+def _make_policy_ids(df, year, prefix, n):
+    """Deterministic IDs: prefix + cohort year + running sequence."""
+    df['POLID'] = [f"{prefix}{year}-{i + 1:06d}" for i in range(n)]
+
+
+def gen(cfg, vehicle_pct, seed, year=None, prefix='INIT', n=None):
+    """Build one book of n policies from cfg — attributes only.
+
+    No claims, no premium, no SIM_YEAR yet; steps run in the legacy order so
+    results stay reproducible against previous versions.
+    """
+    n = int(n or cfg['n'])
     rng = np.random.default_rng(seed)
-    act = df0.copy()
-    hist = []
-    for k in range(n_years):
-        yr = cfg['cohort_year'] + k
-        act['SIM_YEAR'] = yr
+    yr = year or cfg['cohort_year']
 
-        # Age in-force policies by one year; fresh entrants keep young ages.
-        # Crossing 27/45/65 moves the driver rating band up.
-        age = act['COHORT_YEAR'] < yr
-        if age.any():
-            act.loc[age, 'DRIVER_AGE'] += 1
-            act.loc[age, 'CAR_AGE'] = np.minimum(act.loc[age, 'CAR_AGE'] + 1, 10)
-            act.loc[age, 'DRIVER_AGE_CAT'] = np.select(
-                [act.loc[age, 'DRIVER_AGE'] <= 27, act.loc[age, 'DRIVER_AGE'] <= 45,
-                 act.loc[age, 'DRIVER_AGE'] <= 65],
-                ['Young Adults', 'Adults', 'Mature Adults'], default='Seniors')
+    df = _draw_product_mix(cfg, vehicle_pct, rng, n)
+    _draw_sum_assured(df, cfg, rng, n)
+    _draw_engine_bands(df, cfg, rng, n)
+    _draw_driver_profile(df, cfg, rng, n)
+    _draw_car_age(df, cfg, rng, n)
+    _draw_risk_flags(df, cfg, rng, n)
+    _draw_ncd_entry(df, cfg, rng, n)
+    df['COHORT_YEAR'] = yr
+    _draw_telematics(df, cfg, rng, n)
+    _make_policy_ids(df, yr, prefix, n)
+    return df
 
-        # Frequency + priced-NCD snapshot BEFORE this year's claims
-        # (NCD_LEVEL_PRICED lags one year behind the updated NCD_LEVEL).
-        # Tariff loading is recomputed by the tariff pricer from attributes;
-        # it is not stored in the book.
-        act['CLAIM_LAMBDA'] = claim_lambda(act, cfg)
-        act['NCD_LEVEL_PRICED'] = act['NCD_LEVEL']
 
-        # Claim counts: one Poisson draw per policy around its lambda.
-        act['CLAIM_COUNT'] = rng.poisson(act['CLAIM_LAMBDA'].values)
-        act['CLAIM_OCCURRED'] = act['CLAIM_COUNT'] > 0
+# ---------------------------------------------------------------------------
+# Rating pieces (used by the engine and by pricing methods).
+# ---------------------------------------------------------------------------
 
-        # Severity, vectorized: explode claimants into one row PER CLAIM,
-        # draw each claim's peril from its coverage mix, draw Gamma amounts,
-        # cap them, then add back up to policy level.
-        amt = np.zeros(len(act))
-        per = np.full(len(act), '', dtype=object)
-        cnt = act['CLAIM_COUNT'].values
-        m = cnt > 0
-        if m.any():
-            # Repeat each claimant's row index by its claim count.
-            idx = np.repeat(np.flatnonzero(m), cnt[m])
-            cov = act['COVERAGE_TYPE'].values[idx]
-            sa = act['SUM_ASSURED'].values[idx]
-            # Peril draw: uniform vs cumulative mix, argmax-style via sum.
-            P = np.array([[PERIL_DIST[c].get(p, 0) for p in PN] for c in cov])
-            pi = np.minimum((rng.random(len(idx))[:, None] > np.cumsum(P, axis=1)).sum(axis=1), 5)
-            pl = np.array(PN)[pi]
-            # EV repair loading applies to own-damage perils only (not TPBI/TPPD).
-            evm = np.where(act['VEHICLE_TYPE'].values[idx] == 'EV', cfg['ev_severity_factor'], 1.0)
-            # Global severity shock (stress lever): 1.0 = baseline, 1.2 = +20%
-            # on EVERY peril; kept separate from the EV loading so scenarios
-            # can move repair costs without touching the EV mix effect.
-            sev_mult = cfg.get('severity_multiplier', 1.0)
-            sh = np.zeros(len(idx))    # Gamma shape per claim
-            sc = np.zeros(len(idx))    # Gamma scale per claim
-            cap = np.full(len(idx), np.inf)  # payout cap per claim
-            # Third-party + windscreen: fixed severity curves.
-            tb = {'TPBI': (0.35, 70000.0, np.inf), 'TPPD': (0.55, 9000.0, 3e6),
-                  'Windscreen': (2.0, 700.0, 15000.0)}
-            for nm, (a, s, cp) in tb.items():
-                q = pl == nm
-                sh[q] = a
-                sc[q] = s * sev_mult
-                cap[q] = cp
-            # Own-damage: scale tracks sum assured (fraction f, clipped to
-            # a RM band so tiny/large cars stay sane), capped AT sum assured.
-            for nm, lo, hi, f, a in (('Theft', 8000, 20000, 0.20, 1.10),
-                                     ('Fire', 7000, 18000, 0.15, 0.90),
-                                     ('AD', 4500, 12000, 0.10, 0.60)):
-                q = pl == nm
-                sh[q] = a
-                sc[q] = np.clip(sa[q] * f, lo, hi) * evm[q] * sev_mult
-                cap[q] = sa[q]
-            am = np.minimum(rng.gamma(sh, sc), cap)
-            # Scatter the per-claim amounts back onto their policies.
-            np.add.at(amt, idx, am)
-            # One peril string per policy: multiple claims joined by '/'.
-            per[np.flatnonzero(m)] = pd.Series(pl).groupby(pd.Series(idx)).agg('/'.join).values
-        act['CLAIM_AMOUNT'] = amt
-        act['CLAIM_PERIL'] = per
+def claim_lambda(df, cfg):
+    """Poisson claim rate per policy (claims per year).
 
-        # Retention: base 82%, claimants -25pp, clean years +5pp, loyal NCD
-        # +8/+15pp, safe telematics bonus, risky behavior penalty. Clipped.
-        p = np.full(len(act), 0.82) - np.where(act['CLAIM_OCCURRED'].values, 0.25, -0.05)
-        p += np.select([act['NCD_YEARS'].values >= 3, act['NCD_YEARS'].values >= 2],
-                       [0.15, 0.08], default=0.0)
-        ts = act['telematics_score'].values
-        p += np.where(ts >= 80, 0.10 * (ts - 80) / 20, np.where(ts >= 60, 0.03, 0.0))
-        p -= 0.05 * (act['BEHAVIOR_RISK'].values - 1.0)
-        act['RENEWAL_PROB'] = np.clip(p, 0.10, 0.95)
-        act['RENEWED'] = rng.random(len(act)) < act['RENEWAL_PROB'].values
+    Log-linear: start from the base log-rate, add rating factors in log space
+    (so they multiply), exponentiate, then scale by coverage (TPO has no
+    own-damage; TPFT fire/theft only).
+    """
+    freq = cfg['frequency']
+    cat = df['DRIVER_AGE_CAT'].values
+    # Expression grouping mirrors the legacy code (sums are added as groups)
+    # so float rounding — and therefore every historic result — is preserved.
+    log_rate = (np.full(len(df), cfg['claim_frequency_base'])
+                + freq['young_adult'] * (cat == 'Young Adults')
+                + freq['senior'] * (cat == 'Seniors'))
+    log_rate += (freq['young_male'] * ((cat == 'Young Adults') & (df['DRIVER_GENDER'].values == 'Male'))
+                 + freq['ev'] * (df['VEHICLE_TYPE'].values == 'EV'))
+    log_rate += (freq['flood'] * df['FLOOD_RISK'].values
+                 + freq['theft'] * df['THEFT_RISK'].values
+                 + np.log(df['BEHAVIOR_RISK'].values))
+    log_rate += (freq['car_age_per_year'] * df['CAR_AGE'].values
+                 + freq['ncd_per_year'] * df['NCD_YEARS'].values)
+    mult = df['COVERAGE_TYPE'].map(freq['coverage_multiplier']).values
+    return np.exp(log_rate) * mult
 
-        # NCD update AFTER the year: clean year earns a year, any claim resets.
-        act.loc[~act['CLAIM_OCCURRED'], 'NCD_YEARS'] += 1
-        act.loc[act['CLAIM_OCCURRED'], 'NCD_YEARS'] = 0
-        act['NCD_LEVEL'] = act['NCD_YEARS'].map(lambda y: cfg['ncd_table'][min(int(y), 5)])
 
-        # Record the FULL year state in canonical column order (incl. lapsers,
-        # so retention stays measurable), then roll forward: survivors + entrants.
-        hist.append(act[COLS].copy())
+def loading(df, cfg):
+    """Tariff-style combined loading: driver band × vehicle age.
+
+    Car age is capped, so the vehicle factor tops out at 1 + rate × cap.
+    """
+    load = cfg['loading']
+    driver = df['DRIVER_AGE_CAT'].map(load['driver']).fillna(1.0).values
+    car = 1 + load['car_age_per_year'] * np.minimum(df['CAR_AGE'].values, load['car_age_cap'])
+    return driver * car
+
+
+# ---------------------------------------------------------------------------
+# Severity helpers.
+# ---------------------------------------------------------------------------
+
+def draw_perils(coverage, count, rng, cfg):
+    """Draw one peril name per claim from the coverage's mix.
+
+    Mechanics: one uniform vector vs the cumulative mix (legacy draw — kept
+    bit-identical; changing the mechanics would change every claim).
+    """
+    perils = cfg['severity']['perils']
+    mix = np.array([[cfg['peril_dist'][c].get(p, 0.0) for p in perils] for c in coverage])
+    idx = np.minimum((rng.random(count)[:, None] > np.cumsum(mix, axis=1)).sum(axis=1),
+                     len(perils) - 1)
+    return np.array(perils)[idx]
+
+
+def severity_params(perils, sum_assured, cfg, ev_multiplier):
+    """Per-claim Gamma shape / scale / cap arrays from the template specs.
+
+    scale: absolute RM, or clip(SUM_ASSURED × sa_fraction, min, max).
+    cap:   null (uncapped) | RM number | 'sum_assured'.
+    The global severity multiplier applies to every peril; the EV multiplier
+    only where the spec says ev_loading.
+    """
+    specs = cfg['severity']['specs']
+    sev_mult = cfg['severity_multiplier']
+    shape = np.zeros(len(perils))
+    scale = np.zeros(len(perils))
+    cap = np.full(len(perils), np.inf)
+    for name in cfg['severity']['perils']:
+        spec = specs[name]
+        mask = perils == name
+        shape[mask] = spec['shape']
+        if isinstance(spec['scale'], dict):
+            rule = spec['scale']
+            base = np.clip(sum_assured[mask] * rule['sa_fraction'], rule['min'], rule['max'])
+            if spec['ev_loading']:
+                base = base * ev_multiplier[mask]
+            scale[mask] = base * sev_mult
+        else:
+            scale[mask] = spec['scale'] * sev_mult
+        if spec['cap'] == 'sum_assured':
+            cap[mask] = sum_assured[mask]
+        elif spec['cap'] is not None:
+            cap[mask] = spec['cap']
+    return shape, scale, cap
+
+
+# ---------------------------------------------------------------------------
+# Yearly evolution steps (called in order by simulate()).
+# ---------------------------------------------------------------------------
+
+def _age_inforce(book, year, cfg):
+    """Age in-force policies by one year; upgrade bands at the cfg cutoffs."""
+    aging = cfg['aging']
+    mask = book['COHORT_YEAR'] < year
+    if mask.any():
+        book.loc[mask, 'DRIVER_AGE'] += 1
+        book.loc[mask, 'CAR_AGE'] = np.minimum(book.loc[mask, 'CAR_AGE'] + 1, aging['car_age_cap'])
+        book.loc[mask, 'DRIVER_AGE_CAT'] = np.select(
+            [book.loc[mask, 'DRIVER_AGE'] <= aging['young_max'],
+             book.loc[mask, 'DRIVER_AGE'] <= aging['adult_max'],
+             book.loc[mask, 'DRIVER_AGE'] <= aging['mature_max']],
+            ['Young Adults', 'Adults', 'Mature Adults'], default='Seniors')
+
+
+def _add_frequency(book, cfg, rng):
+    """Claim counts: one Poisson draw per policy around its rate."""
+    # NCD snapshot BEFORE this year's claims (priced NCD lags one year behind).
+    book['NCD_LEVEL_PRICED'] = book['NCD_LEVEL']
+    book['CLAIM_LAMBDA'] = claim_lambda(book, cfg)
+    book['CLAIM_COUNT'] = rng.poisson(book['CLAIM_LAMBDA'].values)
+    book['CLAIM_OCCURRED'] = book['CLAIM_COUNT'] > 0
+
+
+def _add_severity(book, cfg, rng):
+    """Per-claim severity: explode claimants → peril → Gamma → cap → regroup.
+
+    Vectorized hot path kept for exact reproducibility:
+      - one uniform vector draws all perils (see draw_perils),
+      - one gamma call draws all amounts,
+      - np.add.at regroups claim amounts in index order.
+    """
+    amount = np.zeros(len(book))
+    peril_string = np.full(len(book), '', dtype=object)
+    counts = book['CLAIM_COUNT'].values
+    claimed = counts > 0
+    if not claimed.any():
+        book['CLAIM_AMOUNT'] = amount
+        book['CLAIM_PERIL'] = peril_string
+        return
+
+    # One row per claim: repeat the claimant's index by its claim count.
+    claim_index = np.repeat(np.flatnonzero(claimed), counts[claimed])
+    coverage = book['COVERAGE_TYPE'].values[claim_index]
+    sum_assured = book['SUM_ASSURED'].values[claim_index]
+    perils = draw_perils(coverage, len(claim_index), rng, cfg)
+    ev_multiplier = np.where(book['VEHICLE_TYPE'].values[claim_index] == 'EV',
+                             cfg['ev_severity_factor'], 1.0)
+
+    shape, scale, cap = severity_params(perils, sum_assured, cfg, ev_multiplier)
+    claim_amounts = np.minimum(rng.gamma(shape, scale), cap)
+    np.add.at(amount, claim_index, claim_amounts)
+
+    # One peril string per policy; multiple claims joined by '/'.
+    joined = pd.Series(perils).groupby(pd.Series(claim_index)).agg('/'.join)
+    peril_string[np.flatnonzero(claimed)] = joined.values
+
+    book['CLAIM_AMOUNT'] = amount
+    book['CLAIM_PERIL'] = peril_string
+
+
+def _add_retention(book, cfg, rng):
+    """Premium-independent renewal probability, then the renewal draw.
+
+    Plain ndarray math (not Series) with the legacy expression grouping, so
+    float rounding stays bit-identical.
+    """
+    ret = cfg['retention']
+    p = np.full(len(book), ret['base']) - np.where(book['CLAIM_OCCURRED'].values,
+                                                   -ret['claim_delta'], -ret['clean_delta'])
+    p = p + np.select([book['NCD_YEARS'].values >= 3, book['NCD_YEARS'].values >= 2],
+                      [ret['ncd3_bonus'], ret['ncd2_bonus']], default=0.0)
+    score = book['telematics_score'].values
+    high, mid = ret['telematics_high'], ret['telematics_mid']
+    p = p + np.where(score >= high['threshold'],
+                     high['bonus'] * (score - high['threshold']) / high['span'],
+                     np.where(score >= mid['threshold'], mid['bonus'], 0.0))
+    p = p - ret['behavior_penalty'] * (book['BEHAVIOR_RISK'].values - 1.0)
+    book['RENEWAL_PROB'] = np.clip(p, ret['clip'][0], ret['clip'][1])
+    book['RENEWED'] = rng.random(len(book)) < book['RENEWAL_PROB'].values
+
+
+def _update_ncd(book, cfg):
+    """NCD after the year: clean year earns a year, any claim resets to 0."""
+    book.loc[~book['CLAIM_OCCURRED'], 'NCD_YEARS'] += 1
+    book.loc[book['CLAIM_OCCURRED'], 'NCD_YEARS'] = 0
+    book['NCD_LEVEL'] = book['NCD_YEARS'].map(lambda y: cfg['ncd_table'][min(int(y), 5)])
+
+
+def _add_entrants(book, cfg, vehicle_pct, seed, year, n_years):
+    """Yearly new business: fresh book with the same mix, next seed offset."""
+    entrants = gen(cfg, vehicle_pct, seed + (year - cfg['cohort_year']),
+                   year=year, prefix='ENT', n=int(cfg['n'] * cfg['entrant_frac']))
+    return pd.concat([book[book['RENEWED']], entrants], ignore_index=True)
+
+
+# ---------------------------------------------------------------------------
+# Main loop.
+# ---------------------------------------------------------------------------
+
+def simulate(df0, cfg, vehicle_pct, seed, n_years=None, verbose=True):
+    """Evolve a book across n_years: age → frequency → severity → retention →
+    NCD → (survivors + entrants) → repeat.
+
+    Returns the full history, one row per policy-year, columns = schema.COLS
+    (including lapsers, so retention stays measurable). Never premium.
+    """
+    n_years = int(n_years or cfg['n_years'])
+    rng = np.random.default_rng(seed)
+    active = df0.copy()
+    history = []
+    for offset in range(n_years):
+        year = cfg['cohort_year'] + offset
+        active['SIM_YEAR'] = year
+
+        _age_inforce(active, year, cfg)
+        _add_frequency(active, cfg, rng)
+        _add_severity(active, cfg, rng)
+        _add_retention(active, cfg, rng)
+        _update_ncd(active, cfg)
+
+        history.append(active[COLS].copy())
         if verbose:
-            print(f"Year {yr}: {len(act)} pols, claims {act['CLAIM_COUNT'].sum()}, "
-                  f"freq {act['CLAIM_OCCURRED'].mean():.1%}")
-        if k < n_years - 1:
-            ent = gen(cfg, vehicle_pct, seed + k + 1, year=yr + 1,
-                      prefix='ENT', n=int(cfg['n'] * cfg['entrant_frac']))
-            act = pd.concat([act[act['RENEWED']], ent], ignore_index=True)
-    return pd.concat(hist, ignore_index=True)
+            print(f"Year {year}: {len(active)} pols, claims {active['CLAIM_COUNT'].sum()}, "
+                  f"freq {active['CLAIM_OCCURRED'].mean():.1%}")
+
+        if offset < n_years - 1:
+            active = _add_entrants(active, cfg, vehicle_pct, seed, year + 1, n_years)
+
+    return pd.concat(history, ignore_index=True)
+
+
+# ---------------------------------------------------------------------------
+# Convenience wrapper for callers that need a complete book (e.g. ML training).
+# ---------------------------------------------------------------------------
+
+# Cached books for callers that ask (ML training). Capped: one scenario reuses
+# its training book across methods (glm + telem), but a long sweep over many
+# DGPs must not accumulate every book in memory.
+_BOOK_CACHE = {}
+_BOOK_CACHE_MAX = 2
+
+
+def _engine_fingerprint(cfg):
+    # Everything that shapes the book; pricing/reporting blobs are excluded so
+    # rate-card tweaks never invalidate a cached book.
+    engine = {k: v for k, v in cfg.items() if k not in ('pricing', 'reporting')}
+    return json.dumps(engine, sort_keys=True, default=str)
+
+
+def simulate_book(cfg, vehicle, seed, n_years=None, cache=False):
+    """Simulate a full book in one call (gen + simulate).
+
+    cache=True reuses identical (cfg, vehicle, seed, years) books — used by
+    the ML methods so glm and telem share one training history. The cache
+    keeps at most _BOOK_CACHE_MAX books (insertion-order eviction).
+    """
+    years = int(n_years or cfg['n_years'])
+    key = None
+    if cache:
+        key = (seed, years, json.dumps(vehicle, sort_keys=True), _engine_fingerprint(cfg))
+        if key in _BOOK_CACHE:
+            return _BOOK_CACHE[key]
+    book = simulate(gen(cfg, vehicle, seed), cfg, vehicle, seed=seed,
+                    n_years=years, verbose=False)
+    if cache:
+        _BOOK_CACHE[key] = book
+        while len(_BOOK_CACHE) > _BOOK_CACHE_MAX:
+            _BOOK_CACHE.pop(next(iter(_BOOK_CACHE)))
+    return book

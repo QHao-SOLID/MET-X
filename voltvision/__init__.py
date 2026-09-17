@@ -1,45 +1,41 @@
 """VoltVision motor helpers: premium-independent simulation + pricing connector.
 
-Layout (calculations live in notebooks; package only connects):
-  config.py    constants, CFG, tariff tables, canonical column order
-  simulate.py  gen(), claim_lambda(), loading(), simulate() — the engine
-  pricing.py   RateCard, registry, quote/api_quote/price_many, reporting
-  loader.py    replays 02x CALC cells so hub/runner quote notebook-owned math
-  io.py        shared/ artifact read/write (parquet, pickle fallback)
+Layout (assumptions in JSON, calculations in notebooks, system connects):
+  schema.py       COLS, PREM_<regime> naming rule, structural checks
+  assumptions.py  base_template.json + scenario patches + seeds.json
+  simulate.py     gen / claim_lambda / loading / simulate / simulate_book
+  pricing.py      BLACK BOX connector: Card, registry, quote / price_many,
+                  resolve_cards, reporting helpers
+  ml.py           shared helpers for ML pricing methods (fit/severity/encode)
+  loader.py       replays 02x CALC cells so every caller quotes identical methods
+  io.py           shared/results read/write: combined books + manifest
+  runner.py       the scenario x seed loop (used by run_scenarios.py)
 """
 
-from .config import (
-    REGIMES, LABEL, COLOR, N_YEARS, SEED,
-    VEHICLE_SCENARIO, SCEN, CFG,
-    BANDS, BASIC_COMP, BASIC_TPO, PER_EXTRA, PERIL_DIST, COLS,
+from .schema import COLS, PREM_PREFIX, premium_column, check_regime_name
+from .assumptions import (
+    load_template, load_seeds, build_cfg, validate, describe_patch, deep_merge,
 )
-from .simulate import gen, claim_lambda, loading, simulate
+from .simulate import gen, claim_lambda, loading, simulate, simulate_book
 from .pricing import (
-    RateCard, FEATS_G, PRICERS, PRICER_INFO, describe_pricer,
-    register_pricer, ensure_core_methods, discover_methods,
-    encode_features, fit_frequency, severity_table,
-    quote, api_quote, price_many,
-    reg_color, reg_label, lr, lr_by, rho,
-    retained_lr, summary, compare_all,
+    Card, PRICERS, register_pricer, describe_pricer, card_defaults, resolve_cards,
+    quote, price_many, api_quote, discover_methods, ensure_core_methods,
+    reg_label, reg_color, lr, lr_by, rho, retained_lr, summary, compare_all,
 )
 from .loader import ensure_methods, CORE_METHODS
-from .stress import deep_update, run_stress, stress_summary, stress_pivot
+from .runner import run_scenarios
 from . import io
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
-    "REGIMES", "LABEL", "COLOR", "N_YEARS", "SEED",
-    "VEHICLE_SCENARIO", "SCEN", "CFG",
-    "BANDS", "BASIC_COMP", "BASIC_TPO", "PER_EXTRA", "PERIL_DIST", "COLS",
-    "gen", "claim_lambda", "loading", "simulate",
-    "RateCard", "FEATS_G", "PRICERS", "PRICER_INFO", "describe_pricer",
-    "register_pricer", "ensure_core_methods", "discover_methods",
-    "ensure_methods", "CORE_METHODS",
-    "encode_features", "fit_frequency", "severity_table",
-    "quote", "api_quote", "price_many",
-    "reg_color", "reg_label",
-    "lr", "lr_by", "rho", "retained_lr", "summary",
-    "compare_all", "io",
-    "deep_update", "run_stress", "stress_summary", "stress_pivot",
+    "COLS", "PREM_PREFIX", "premium_column", "check_regime_name",
+    "load_template", "load_seeds", "build_cfg", "validate", "describe_patch", "deep_merge",
+    "gen", "claim_lambda", "loading", "simulate", "simulate_book",
+    "Card", "PRICERS", "register_pricer", "describe_pricer", "card_defaults",
+    "resolve_cards", "quote", "price_many", "api_quote",
+    "discover_methods", "ensure_core_methods", "ensure_methods", "CORE_METHODS",
+    "reg_label", "reg_color",
+    "lr", "lr_by", "rho", "retained_lr", "summary", "compare_all",
+    "run_scenarios", "io",
 ]

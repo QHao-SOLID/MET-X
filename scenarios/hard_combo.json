@@ -1,0 +1,16 @@
+[
+    {
+        "name": "combo_hard",
+        "claim_frequency_base": -1.70,
+        "severity_multiplier": 1.15,
+        "ev_severity_factor": 1.35,
+        "pricing": {
+            "glm": {
+                "expense_loading": 1.70
+            },
+            "telem": {
+                "expense_loading": 1.70
+            }
+        }
+    }
+]
