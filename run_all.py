@@ -32,6 +32,7 @@ from voltvision import (  # noqa: E402  (imports after path fix, on purpose)
     gen, simulate, price_many, compare_all, lr_by,
     discover_methods, io,
 )
+from voltvision.config import export_config  # noqa: E402
 
 
 def parse_args(argv=None):
@@ -111,7 +112,8 @@ def main(argv=None):
         export_scen = args.excel_scen if args.excel_scen in scens else scens[0]
         export_results(export_scen, regimes)
 
-    io.save_config(cfg)
+    # Run provenance: record the actual cfg/scen (overrides included).
+    export_config(cfg=cfg, scen=scen_mix)
     print('done.')
     return 0
 

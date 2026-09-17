@@ -1,7 +1,9 @@
 """Premium-independent simulation engine (bread and butter).
 
 What lives here:
-  gen()          builds one book of policies (attributes + BASIC_PREMIUM, no claims).
+  gen()          builds one book of policies (risk attributes only, no claims,
+                 NO premium: the tariff base is computed by the tariff pricer
+                 in 02a_tariff.ipynb from the book attributes).
                  Used for the starting book (prefix INIT) and yearly entrants (ENT).
   claim_lambda() Poisson rate per policy: log-linear rating model on driver,
                  vehicle, risk flags, behavior, car age, NCD, coverage.
@@ -23,7 +25,7 @@ TODO (improvement backlog, behavior intentionally unchanged):
 import numpy as np
 import pandas as pd
 
-from .config import BANDS, BASIC_COMP, BASIC_TPO, COLS, PER_EXTRA, PERIL_DIST
+from .config import BANDS, COLS, PERIL_DIST
 
 
 def _p(w):
@@ -35,7 +37,7 @@ def _p(w):
 
 def gen(cfg, vehicle_pct, seed, year=None, prefix='INIT', n=None):
     # Build one book of n policies from the CFG assumptions.
-    # Pure attributes + BASIC_PREMIUM: no claims, no SIM_YEAR yet.
+    # Pure risk attributes: no claims, no premium, no SIM_YEAR yet.
     # Same seed + same inputs = same book (reproducible).
     n = int(n or cfg['n'])
     rng = np.random.default_rng(seed)
@@ -108,18 +110,6 @@ def gen(cfg, vehicle_pct, seed, year=None, prefix='INIT', n=None):
     # Deterministic policy IDs: prefix + cohort year + sequence.
     df['POLID'] = [f"{prefix}{yr}-{i + 1:06d}" for i in range(n)]
 
-    # BASIC premium from the tariff tables (before loadings/discounts/SST):
-    # Comp = first-RM1,000 rate + PER_EXTRA per extra thousand of sum assured;
-    # TPFT = 75% of Comp; TPO = flat table rate (SA leg added at pricing time).
-    bi = {b: i for i, b in enumerate(BANDS)}
-    cb = np.array([BASIC_COMP[r][bi[e]] for r, e in zip(df['REGION'], df['ENGINE_CAPACITY'])])
-    ex = np.array([PER_EXTRA[r] for r in df['REGION']])
-    comp_basic = cb + ex * np.ceil(np.maximum(0, df['SUM_ASSURED'].values - 1000) / 1000)
-    tb = np.array([BASIC_TPO[r][bi[e]] for r, e in zip(df['REGION'], df['ENGINE_CAPACITY'])])
-    cov = df['COVERAGE_TYPE'].values
-    df['BASIC_PREMIUM'] = np.where(
-        cov == 'Comprehensive', comp_basic,
-        np.where(cov == 'TPFT', np.round(0.75 * comp_basic, 2), tb)).round(2)
     return df
 
 
@@ -173,8 +163,9 @@ def simulate(df0, cfg, vehicle_pct, seed, n_years=5, verbose=True):
 
         # Frequency + priced-NCD snapshot BEFORE this year's claims
         # (NCD_LEVEL_PRICED lags one year behind the updated NCD_LEVEL).
+        # Tariff loading is recomputed by the tariff pricer from attributes;
+        # it is not stored in the book.
         act['CLAIM_LAMBDA'] = claim_lambda(act, cfg)
-        act['TOTAL_LOADING'] = loading(act)
         act['NCD_LEVEL_PRICED'] = act['NCD_LEVEL']
 
         # Claim counts: one Poisson draw per policy around its lambda.

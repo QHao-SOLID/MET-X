@@ -1,0 +1,226 @@
+{
+  "REGIMES": [
+    "tariff",
+    "glm",
+    "telem"
+  ],
+  "LABEL": {
+    "tariff": "Tariff",
+    "glm": "GLM",
+    "telem": "GLM+Telematics"
+  },
+  "COLOR": {
+    "tariff": "#94a3b8",
+    "glm": "#f59e0b",
+    "telem": "#2563eb"
+  },
+  "N_YEARS": 5,
+  "SEED": 20260916,
+  "VEHICLE_SCENARIO": "ALL",
+  "SCEN": {
+    "ICE": {
+      "ICE": 1.0,
+      "EV": 0.0
+    },
+    "EV": {
+      "ICE": 0.0,
+      "EV": 1.0
+    },
+    "MIX": {
+      "ICE": 0.9,
+      "EV": 0.1
+    }
+  },
+  "CFG": {
+    "n": 10000,
+    "cohort_year": 2026,
+    "seed": 20260916,
+    "coverage_pct": {
+      "Comprehensive": 0.65,
+      "TPFT": 0.2,
+      "TPO": 0.15
+    },
+    "region_pct": {
+      "Peninsular Malaysia": 0.8,
+      "East Malaysia (Sabah, Sawarak & Labuan)": 0.2
+    },
+    "generation_pct": {
+      "Young Adults": 0.4,
+      "Adults": 0.4,
+      "Mature Adults": 0.15,
+      "Seniors": 0.05
+    },
+    "age_bands": {
+      "Young Adults": [
+        18,
+        28
+      ],
+      "Adults": [
+        28,
+        46
+      ],
+      "Mature Adults": [
+        46,
+        66
+      ],
+      "Seniors": [
+        66,
+        76
+      ]
+    },
+    "gender_pct": {
+      "Male": 0.55,
+      "Female": 0.45
+    },
+    "car_age_median": {
+      "Young Adults": 2.0,
+      "Adults": 3.5,
+      "Mature Adults": 5.0,
+      "Seniors": 5.5
+    },
+    "car_age_sigma": 1.5,
+    "claim_frequency_base": -2.0,
+    "ev_severity_factor": 1.2,
+    "severity_multiplier": 1.0,
+    "expense_loading": 1.5,
+    "tpo_sa_pct": 0.005,
+    "tpo_loading": 1.1,
+    "SST": 0.08,
+    "sa_stats": {
+      "ICE": [
+        50000,
+        0.5
+      ],
+      "EV": [
+        80000,
+        0.5
+      ]
+    },
+    "ncd_table": {
+      "0": 0.0,
+      "1": 0.25,
+      "2": 0.3,
+      "3": 0.3833,
+      "4": 0.45,
+      "5": 0.55
+    },
+    "engine_weights": [
+      0.25,
+      0.2,
+      0.18,
+      0.15,
+      0.1,
+      0.07,
+      0.03,
+      0.02
+    ],
+    "entrant_frac": 0.5
+  },
+  "BANDS": [
+    "0 to 1,400 cc / EV up to 70 kW",
+    "1,401 to 1,650 cc / EV 71 - 100 kW",
+    "1,651 - 2,200 cc / EV 101 - 125 kW",
+    "2,201 - 3,050 cc / EV 126 - 150 kW",
+    "3,051 - 4,100 cc / EV 151 - 200 kW",
+    "4,101 - 4,250 cc / EV 201 - 250 kW",
+    "4,251 - 4,400 cc / EV 251 - 300 kW",
+    "Over 4,400 cc / EV > 300 kW"
+  ],
+  "BASIC_COMP": {
+    "Peninsular Malaysia": [
+      273.8,
+      305.5,
+      339.1,
+      372.6,
+      404.3,
+      436.0,
+      469.6,
+      501.3
+    ],
+    "East Malaysia (Sabah, Sawarak & Labuan)": [
+      196.2,
+      220.0,
+      243.9,
+      266.5,
+      290.4,
+      313.0,
+      336.9,
+      359.5
+    ]
+  },
+  "BASIC_TPO": {
+    "Peninsular Malaysia": [
+      120.6,
+      135.0,
+      151.2,
+      167.4,
+      181.8,
+      196.2,
+      212.4,
+      226.8
+    ],
+    "East Malaysia (Sabah, Sawarak & Labuan)": [
+      67.5,
+      75.6,
+      85.2,
+      93.6,
+      101.7,
+      110.1,
+      118.2,
+      126.6
+    ]
+  },
+  "PER_EXTRA": {
+    "Peninsular Malaysia": 26.0,
+    "East Malaysia (Sabah, Sawarak & Labuan)": 20.3
+  },
+  "PERIL_DIST": {
+    "Comprehensive": {
+      "AD": 0.58,
+      "Windscreen": 0.15,
+      "Theft": 0.08,
+      "Fire": 0.04,
+      "TPPD": 0.12,
+      "TPBI": 0.03
+    },
+    "TPO": {
+      "TPPD": 0.78,
+      "TPBI": 0.22
+    },
+    "TPFT": {
+      "TPPD": 0.444,
+      "TPBI": 0.111,
+      "Theft": 0.296,
+      "Fire": 0.148
+    }
+  },
+  "COLS": [
+    "POLID",
+    "COVERAGE_TYPE",
+    "SUM_ASSURED",
+    "REGION",
+    "VEHICLE_TYPE",
+    "ENGINE_CAPACITY",
+    "DRIVER_AGE_CAT",
+    "DRIVER_AGE",
+    "CAR_AGE",
+    "DRIVER_GENDER",
+    "FLOOD_RISK",
+    "THEFT_RISK",
+    "NCD_LEVEL_PRICED",
+    "NCD_LEVEL",
+    "NCD_YEARS",
+    "CLAIM_LAMBDA",
+    "SIM_YEAR",
+    "CLAIM_COUNT",
+    "CLAIM_OCCURRED",
+    "CLAIM_AMOUNT",
+    "CLAIM_PERIL",
+    "RENEWAL_PROB",
+    "RENEWED",
+    "COHORT_YEAR",
+    "BEHAVIOR_RISK",
+    "telematics_score"
+  ],
+  "exported_at": "2026-09-17T22:32:40"
+}

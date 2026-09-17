@@ -59,7 +59,7 @@ FEATS_G = ['DRIVER_AGE', 'CAR_AGE', 'NCD_LEVEL', 'VEHICLE_TYPE',
 
 # Columns a priced book must have before quoting (i.e. it came from simulate).
 _REQUIRED_BOOK_COLS = ('SIM_YEAR', 'COHORT_YEAR', 'POLID', 'CLAIM_COUNT',
-                       'CLAIM_AMOUNT', 'BASIC_PREMIUM', 'NCD_LEVEL')
+                       'CLAIM_AMOUNT', 'NCD_LEVEL')
 
 
 @dataclass
@@ -102,9 +102,6 @@ def encode_features(d, feats):
         if c in feats:
             X[c] = X[c].astype('category').cat.codes
     return X
-
-
-_enc = encode_features  # short alias used inside method cells
 
 
 def fit_frequency(tr, feats, alpha):
@@ -250,16 +247,6 @@ def quote(book, regime, card):
     return out
 
 
-def price_book(book, method, cfg, **overrides):
-    # Single-regime dispatch with a card built from cfg + live overrides.
-    return quote(book, method, RateCard.from_cfg(cfg, **overrides))
-
-
-def price_all3(book, cfg, **overrides):
-    # Core three, kept as the default full-set call.
-    return price_many(book, cfg, REGIMES, **overrides)
-
-
 def price_many(book, cfg, regimes, cards=None, **overrides):
     # Price the SAME book N ways. Each regime may carry its own card
     # overrides via cards={name: {...}}; shared overrides apply to the rest.
@@ -290,14 +277,6 @@ def api_quote(book, regime, card):
         },
         'book': priced,
     }
-
-
-def api_quote_many(book, cfg, regimes, cards=None, **overrides):
-    # Batch API output: one api_quote dict per regime, same card rules.
-    card = RateCard.from_cfg(cfg, **overrides)
-    base = dict(cards or {})
-    return {m: api_quote(book, m, RateCard.from_cfg(cfg, **overrides, **base.get(m, {})))
-            for m in regimes}
 
 
 # ---- Reporting helpers (regime comparison only, all N-safe) ----
@@ -346,6 +325,3 @@ def compare_all(books, drop=0.15):
         'Prem-count rho': round(rho(books[m]), 3),
         'Avg prem (RM)': round(books[m]['FINAL_PREMIUM_SST'].mean(), 0),
     } for m in books])
-
-
-summary3 = summary  # alias (core-3 era name)

@@ -1,19 +1,20 @@
-"""Stress testing: declarative scenario grids over CFG (DGP) and RateCard (pricing).
+"""Stress testing: declarative scenario lists over CFG (DGP) and RateCard (pricing).
 
-Grid = list of scenario dicts:
+Scenario = one dict:
   {'name': 'freq_up', 'cfg': {'claim_frequency_base': -1.80},
    'card': {'expense_loading': 1.6}, 'vehicle': 'MIX'}
 
-run_stress() deep-merges each cfg override onto CFG, simulates the book once
-per (scenario, seed), prices every regime with the scenario's card overrides,
-and returns one tidy row per (scenario, seed, regime).
+Lists live as JSON files in scenarios/ (one group per file) and are executed
+by run_stress.py. run_stress() deep-merges each cfg override onto CFG,
+simulates the book once per (scenario, seed), prices every regime with the
+scenario's card overrides, and returns one tidy row per (scenario, seed, regime).
 
 Design notes:
 - Overrides are DEEP-merged: {'coverage_pct': {'TPO': 0.35}} touches only TPO.
 - Seeds re-draw simulation noise; scenario × seeds defines the grid size.
 - Training books are cached per DGP fingerprint (pricing.training_book), so
   scenario pricing reuses one synthetic history across seeds.
-- Results are tidy (long form) so pivots/plots/CSV exports are trivial.
+- Results are tidy (long form) so pivots/plots/JSON exports are trivial.
 """
 
 import pandas as pd

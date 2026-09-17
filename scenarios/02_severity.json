@@ -1,0 +1,14 @@
+[
+ {
+  "name": "sev_x1.20",
+  "cfg": {"severity_multiplier": 1.20}
+ },
+ {
+  "name": "sev_x1.35",
+  "cfg": {"severity_multiplier": 1.35}
+ },
+ {
+  "name": "ev_sev_1.40",
+  "cfg": {"ev_severity_factor": 1.40}
+ }
+]

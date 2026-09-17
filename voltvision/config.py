@@ -127,13 +127,14 @@ PERIL_DIST = {
     }
 }
 
-# ---- Canonical simulated-book column order (matches voltvision_all cols_to_keep,
-# plus ENGINE_CAPACITY kept — full drops it, we keep the tariff band) ----
+# ---- Canonical simulated-book column order (attributes + claims only).
+# vs voltvision_all cols_to_keep: ENGINE_CAPACITY kept, BASIC_PREMIUM dropped
+# — the tariff base is computed by the tariff pricer (02a) from attributes. ----
 COLS = ['POLID', 'COVERAGE_TYPE', 'SUM_ASSURED', 'REGION', 'VEHICLE_TYPE',
         'ENGINE_CAPACITY',
         'DRIVER_AGE_CAT', 'DRIVER_AGE', 'CAR_AGE', 'DRIVER_GENDER',
         'FLOOD_RISK', 'THEFT_RISK',
-        'BASIC_PREMIUM', 'TOTAL_LOADING', 'NCD_LEVEL_PRICED', 'NCD_LEVEL',
+        'NCD_LEVEL_PRICED', 'NCD_LEVEL',
         'NCD_YEARS', 'CLAIM_LAMBDA',
         'SIM_YEAR', 'CLAIM_COUNT', 'CLAIM_OCCURRED', 'CLAIM_AMOUNT',
         'CLAIM_PERIL',
@@ -150,10 +151,12 @@ EXPORT_NAMES = ['REGIMES', 'LABEL', 'COLOR', 'N_YEARS', 'SEED',
                 'PERIL_DIST', 'COLS']
 
 
-def export_config(path=None):
+def export_config(path=None, cfg=None, scen=None):
     """Dump this module's contents to JSON (provenance for a run).
 
     Writes every name in EXPORT_NAMES plus an `exported_at` timestamp.
+    `cfg` / `scen` replace the CFG / SCEN entries when a caller (e.g.
+    run_all.py) ran with one-off overrides — the record then matches the run.
     Tuples inside CFG (age bands, SA stats) serialise as strings — this is
     a record for audit, not a reloadable config; edits belong in this file.
     Default target: shared/config_export.json. Returns the written path.
@@ -164,6 +167,10 @@ def export_config(path=None):
     from pathlib import Path
 
     out = {name: globals()[name] for name in EXPORT_NAMES}
+    if cfg is not None:
+        out['CFG'] = cfg
+    if scen is not None:
+        out['SCEN'] = scen
     out['exported_at'] = _dt.datetime.now().isoformat(timespec='seconds')
     p = Path(path) if path else (Path(__file__).resolve().parent.parent
                                  / 'shared' / 'config_export.json')

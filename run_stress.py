@@ -1,23 +1,30 @@
-"""Run a stress grid headless: scenarios x seeds x regimes -> tidy results.
+"""Run stress scenarios headless: JSON scenario groups x seeds x regimes.
 
-Loads a grid (default stress_grid.py, or a .py/.json path), simulates every
-(scenario, seed) once, prices each regime with the scenario's card overrides,
-prints pivots, and saves results to shared/ (CSV + parquet/pickle).
+Scenario files live in scenarios/*.json (default), each a JSON list of:
+  {"name": "...", "cfg": {DGP overrides}, "card": {pricing overrides},
+   "vehicle": "ICE" | "EV" | "MIX" (optional, default --vehicle)}
+
+Every (scenario, seed) is simulated once and priced per regime; tidy results
+are saved per group to shared/stress_results/<group>_<stamp>.csv and .json,
+with mean-LR and P(LR>75%) pivots printed.
+
+Useful levers (docs in AGENT.md): cfg = claim_frequency_base,
+severity_multiplier, ev_severity_factor, coverage_pct, entrant_frac;
+card = expense_loading, tpo_loading, tpo_sa_pct, risk_step, train_book_seed.
 
 Examples:
   python run_stress.py --quick --seeds 0            # smoke: fast, 1 seed
-  python run_stress.py                              # full grid, 3 seeds
-  python run_stress.py --scenarios base,freq_x1.22,tpo_heavy
-  python run_stress.py --grid my_grid.py --seeds 0,1,2,3,4
-  python run_stress.py --regimes tariff,glm --vehicle EV
+  python run_stress.py                              # all groups, seeds 0,1,2
+  python run_stress.py --grid scenarios/02_severity.json --seeds 0,1
+  python run_stress.py --scenarios base,freq_x1.22 --no-save
 """
 
 import argparse
 import datetime as dt
-import importlib.util
 import json
 import os
 import sys
+from pathlib import Path
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 if ROOT not in sys.path:
@@ -27,19 +34,29 @@ from voltvision import REGIMES, io  # noqa: E402
 from voltvision.stress import run_stress, stress_summary, stress_pivot  # noqa: E402
 
 
-def load_grid(path):
-    # Import a .py grid module by path, or parse a .json list of scenarios.
-    if path.endswith('.json'):
-        return json.load(open(path, encoding='utf-8'))
-    spec = importlib.util.spec_from_file_location('stress_grid', path)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod.SCENARIOS
+def load_groups(grid):
+    # grid = a directory of *.json scenario files (default: scenarios/) or a
+    # single .json file. Returns [(group_name, [scenario dicts]), ...] in
+    # file-name order; the file stem becomes the result group name.
+    p = Path(grid)
+    if p.is_dir():
+        files = sorted(p.glob('*.json'))
+        if not files:
+            raise SystemExit(f'no *.json scenario files found in {p}')
+    else:
+        files = [p]
+    groups = []
+    for f in files:
+        scens = json.loads(f.read_text(encoding='utf-8'))
+        if not isinstance(scens, list) or not scens:
+            raise SystemExit(f'{f}: expected a non-empty JSON list of scenarios')
+        groups.append((f.stem, scens))
+    return groups
 
 
 def parse_args(argv=None):
     ap = argparse.ArgumentParser(description='VoltVision stress runner')
-    ap.add_argument('--grid', default='stress_grid.py', help='grid file (.py or .json)')
+    ap.add_argument('--grid', default='scenarios', help='scenario directory or .json file')
     ap.add_argument('--seeds', default='0,1,2', help='comma-separated sim seeds')
     ap.add_argument('--scenarios', default='', help='subset of scenario names (default: all)')
     ap.add_argument('--regimes', default=','.join(REGIMES), help='regimes to price')
@@ -52,37 +69,45 @@ def parse_args(argv=None):
 def main(argv=None):
     args = parse_args(argv)
 
-    grid = load_grid(args.grid)
+    groups = load_groups(args.grid)
     if args.scenarios:
         keep = {s.strip() for s in args.scenarios.split(',') if s.strip()}
-        grid = [s for s in grid if s['name'] in keep]
+        groups = [(g, [s for s in scens if s['name'] in keep]) for g, scens in groups]
+        groups = [(g, scens) for g, scens in groups if scens]
     seeds = tuple(int(s) for s in args.seeds.split(',') if s.strip())
     regimes = [r.strip() for r in args.regimes.split(',') if r.strip()]
-    print(f"grid={args.grid} scenarios={[s['name'] for s in grid]} "
-          f"seeds={seeds} regimes={regimes} vehicle={args.vehicle} quick={args.quick}")
+    print(f"grid={args.grid} groups={[g for g, _ in groups]} seeds={seeds} "
+          f"regimes={regimes} vehicle={args.vehicle} quick={args.quick}")
 
-    df = run_stress(grid, seeds=seeds, regimes=regimes, vehicle=args.vehicle,
-                    quick=args.quick)
+    stamp = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
+    out_dir = io.SHARED / 'stress_results'
+    frames = []
+    for name, scens in groups:
+        print(f"\n########## {name}: {[s['name'] for s in scens]}")
+        df = run_stress(scens, seeds=seeds, regimes=regimes,
+                        vehicle=args.vehicle, quick=args.quick)
+        frames.append(df)
+        print('\n=== mean LR by scenario x regime ===')
+        print(stress_pivot(df, 'lr', 'mean').round(2).to_string())
+        if len(seeds) > 1:
+            print('\n=== P(LR > 75%) by scenario x regime ===')
+            print(stress_pivot(df, 'lr', lambda x: (x > 75).mean()).round(2).to_string())
+        print('\n=== summary ===')
+        print(stress_summary(df).round(3).to_string(index=False))
+        if not args.no_save:
+            out_dir.mkdir(parents=True, exist_ok=True)
+            csv, js = out_dir / f'{name}_{stamp}.csv', out_dir / f'{name}_{stamp}.json'
+            df.to_csv(csv, index=False)
+            df.to_json(js, orient='records', indent=1)
+            print(f"saved: {csv}\n       {js}")
 
-    print('\n=== mean LR by scenario x regime ===')
-    print(stress_pivot(df, 'lr', 'mean').round(2).to_string())
-    if len(df) > len(grid) * len(regimes):          # more than one seed -> spread
-        print('\n=== P(LR > 75%) by scenario x regime ===')
-        print(stress_pivot(df, 'lr', lambda x: (x > 75).mean()).round(2).to_string())
-    print('\n=== summary ===')
-    print(stress_summary(df).round(3).to_string(index=False))
-
-    if not args.no_save:
-        stamp = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
-        stem = f"stress_{stamp}"
-        try:
-            p = df.to_parquet(io.SHARED / f'{stem}.parquet')
-        except Exception:
-            p = io.SHARED / f'{stem}.pkl'
-            df.to_pickle(p)
-        csv = io.SHARED / f'{stem}.csv'
-        df.to_csv(csv, index=False)
-        print(f"\nsaved: {p}\n       {csv}")
+    if not args.no_save and len(frames) > 1:
+        import pandas as pd
+        allf = pd.concat(frames, ignore_index=True)
+        csv, js = out_dir / f'all_{stamp}.csv', out_dir / f'all_{stamp}.json'
+        allf.to_csv(csv, index=False)
+        allf.to_json(js, orient='records', indent=1)
+        print(f"\ncombined: {csv}\n          {js}")
     print('done.')
     return 0
 

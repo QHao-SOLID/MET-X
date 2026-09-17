@@ -18,9 +18,9 @@ from .pricing import (
     RateCard, FEATS_G, PRICERS, PRICER_INFO, describe_pricer,
     register_pricer, ensure_core_methods, discover_methods,
     encode_features, fit_frequency, severity_table,
-    quote, api_quote, api_quote_many, price_book, price_all3,
-    price_many, reg_color, reg_label, lr, lr_by, rho,
-    retained_lr, summary, summary3, compare_all,
+    quote, api_quote, price_many,
+    reg_color, reg_label, lr, lr_by, rho,
+    retained_lr, summary, compare_all,
 )
 from .loader import ensure_methods, CORE_METHODS
 from .stress import deep_update, run_stress, stress_summary, stress_pivot
@@ -37,10 +37,9 @@ __all__ = [
     "register_pricer", "ensure_core_methods", "discover_methods",
     "ensure_methods", "CORE_METHODS",
     "encode_features", "fit_frequency", "severity_table",
-    "quote", "api_quote", "api_quote_many", "price_book",
-    "price_all3", "price_many",
+    "quote", "api_quote", "price_many",
     "reg_color", "reg_label",
-    "lr", "lr_by", "rho", "retained_lr", "summary", "summary3",
+    "lr", "lr_by", "rho", "retained_lr", "summary",
     "compare_all", "io",
     "deep_update", "run_stress", "stress_summary", "stress_pivot",
 ]

@@ -3,9 +3,9 @@
   "cohort_year": 2026,
   "seed": 20260916,
   "coverage_pct": {
-    "Comprehensive": 0.45,
+    "Comprehensive": 0.65,
     "TPFT": 0.2,
-    "TPO": 0.35
+    "TPO": 0.15
   },
   "region_pct": {
     "Peninsular Malaysia": 0.8,

@@ -3,8 +3,8 @@
 Files (all generated — never hand-edit):
   sim_<SCEN>            raw simulated book (simulate.py output, no premium)
   priced_<SCEN>_<reg>   priced book (FINAL_PREMIUM_SST included)
-  config                CFG dict snapshot (reproducibility record)
 
+Run provenance (config_export.json) comes from voltvision.config.export_config.
 Parquet needs pyarrow; without it we fall back to pickle automatically.
 """
 
@@ -57,12 +57,3 @@ def save_priced(scen, regime, book):
 def load_priced(scen, regime):
     # Priced book for one scenario + regime.
     return _read(f"priced_{scen}_{regime}")
-
-
-def save_config(cfg):
-    # CFG snapshot as JSON (tuples become strings — record, not reloadable).
-    import json
-    SHARED.mkdir(parents=True, exist_ok=True)
-    p = SHARED / "config.json"
-    p.write_text(json.dumps(cfg, indent=2, default=str), encoding="utf-8")
-    return p
