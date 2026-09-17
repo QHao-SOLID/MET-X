@@ -1,0 +1,85 @@
+{
+  "n": 10000,
+  "cohort_year": 2026,
+  "seed": 20260916,
+  "coverage_pct": {
+    "Comprehensive": 0.45,
+    "TPFT": 0.2,
+    "TPO": 0.35
+  },
+  "region_pct": {
+    "Peninsular Malaysia": 0.8,
+    "East Malaysia (Sabah, Sawarak & Labuan)": 0.2
+  },
+  "generation_pct": {
+    "Young Adults": 0.4,
+    "Adults": 0.4,
+    "Mature Adults": 0.15,
+    "Seniors": 0.05
+  },
+  "age_bands": {
+    "Young Adults": [
+      18,
+      28
+    ],
+    "Adults": [
+      28,
+      46
+    ],
+    "Mature Adults": [
+      46,
+      66
+    ],
+    "Seniors": [
+      66,
+      76
+    ]
+  },
+  "gender_pct": {
+    "Male": 0.55,
+    "Female": 0.45
+  },
+  "car_age_median": {
+    "Young Adults": 2.0,
+    "Adults": 3.5,
+    "Mature Adults": 5.0,
+    "Seniors": 5.5
+  },
+  "car_age_sigma": 1.5,
+  "claim_frequency_base": -2.0,
+  "ev_severity_factor": 1.2,
+  "severity_multiplier": 1.0,
+  "expense_loading": 1.5,
+  "tpo_sa_pct": 0.005,
+  "tpo_loading": 1.1,
+  "SST": 0.08,
+  "sa_stats": {
+    "ICE": [
+      50000,
+      0.5
+    ],
+    "EV": [
+      80000,
+      0.5
+    ]
+  },
+  "ncd_table": {
+    "0": 0.0,
+    "1": 0.25,
+    "2": 0.3,
+    "3": 0.3833,
+    "4": 0.45,
+    "5": 0.55
+  },
+  "engine_weights": [
+    0.25,
+    0.2,
+    0.18,
+    0.15,
+    0.1,
+    0.07,
+    0.03,
+    0.02
+  ],
+  "entrant_frac": 0.5
+}
