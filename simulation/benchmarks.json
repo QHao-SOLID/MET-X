@@ -1,0 +1,102 @@
+{
+ "_meta": {
+  "compiled": "2026-09-18",
+  "note": "Industry benchmarks for realism checks. Search-derived (Parallel Search); verify against primary PIAM/BNM publications before quoting externally.",
+  "sources": [
+   "PIAM full-year 2025 results (paultan / thesun / insuranceinfo, May 2026): motor underwriting loss RM289.3m, combined ratio 103%, private-car claim frequency above 7%, claim severity RM8,831 (spare-parts inflation)",
+   "PIAM via carz.com.my (2024): average private vehicle premium RM741 (2022), RM810 (2023), RM857 (1H 2024)",
+   "VTAREC / The Star (2024) and businesstoday (2026): ~10.8k vehicles stolen Jan-Sep 2024 (~13k/yr); 33,716 stolen 2024-Jul 2026",
+   "Autore / Zurich / PIAM motor pages: NCD table 0-55% for private cars, sixth renewal onward 55%",
+   "Liberty Insurance PDS / BJAK: RM400 compulsory excess for unnamed drivers; young-driver excess commonly RM1,500"
+  ],
+  "sources_file": "sources/benchmarks_sources.json"
+ },
+ "targets": [
+  {
+   "metric": "own_damage_claim_rate",
+   "value": 0.09,
+   "unit": "claims per policy-year (AD + Windscreen; PIAM private-car frequency is OD-centric)",
+   "tolerance": [
+    0.05,
+    0.14
+   ],
+   "source": "PIAM 2025: private car claim frequency above 7%",
+   "source_ids": [
+    "piam-2025-results-paultan",
+    "piam-2025-results-thesun",
+    "piam-fy2025-press"
+   ]
+  },
+  {
+   "metric": "avg_claim_severity",
+   "value": 8831,
+   "unit": "RM per claim (all claims)",
+   "tolerance": [
+    6000,
+    13000
+   ],
+   "source": "PIAM 2025: claim severity RM8,831",
+   "source_ids": [
+    "piam-2025-results-paultan",
+    "piam-2025-results-thesun"
+   ]
+  },
+  {
+   "metric": "theft_claim_rate",
+   "value": 0.0015,
+   "unit": "claims per policy-year",
+   "tolerance": [
+    0.0005,
+    0.004
+   ],
+   "source": "VTAREC/Star: ~13k vehicle thefts per year vs ~10M insured cars",
+   "source_ids": [
+    "theft-vtrec-businesstoday",
+    "theft-paultan-2024",
+    "vtrec-thestar-2024",
+    "dosm-crime-2023"
+   ]
+  },
+  {
+   "metric": "avg_private_car_premium",
+   "value": 950,
+   "unit": "RM per policy-year",
+   "tolerance": [
+    700,
+    1300
+   ],
+   "source": "PIAM average private vehicle premium RM857 (1H 2024), rising trend",
+   "source_ids": [
+    "premium-levels-carz"
+   ]
+  },
+  {
+   "metric": "retention_rate",
+   "value": 0.85,
+   "unit": "share renewed",
+   "tolerance": [
+    0.75,
+    0.92
+   ],
+   "source": "motor renewal rates commonly 80-90%",
+   "source_ids": [
+    "ncd-piam-motor"
+   ]
+  },
+  {
+   "metric": "portfolio_claims_ratio",
+   "value": 0.75,
+   "unit": "claims paid / premium (tariff book)",
+   "tolerance": [
+    0.62,
+    0.85
+   ],
+   "source": "Derived from PIAM 2025 motor combined ratio 103% less ~28% expense load",
+   "source_ids": [
+    "combined-ratio-autobuzz",
+    "piam-2025-results-paultan",
+    "piam-2025-results-insuranceinfo"
+   ]
+  }
+ ]
+}

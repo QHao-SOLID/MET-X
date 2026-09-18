@@ -14,8 +14,8 @@ What lives here:
 Contract:
   - Output columns follow schema.COLS (POLID first); never premium columns.
   - Same seed + same cfg = identical book (local RNG, no globals).
-  - Draw ORDER is part of reproducibility: helpers below keep the legacy
-    order (and float arithmetic order) so refactors stay number-identical.
+    - Draw ORDER is part of reproducibility: helper order and float-expression
+    grouping are fixed so refactors stay number-identical.
 """
 
 import json
@@ -36,6 +36,49 @@ def normalize_weights(weights):
     return a / a.sum()
 
 
+# Weights below this are float dust (e.g. 1 - 0.4000000000000001): treat as 0.
+_ZERO_TOL = 1e-12
+
+
+def normalize_mix(mix):
+    """Validate a vehicle allocation and drop zero-weight fuels.
+
+    A fuel at 0% behaves as if absent — this keeps the random draw identical
+    to a single-fuel book (same RNG stream), so `{"ICE": 0.0, "EV": 1.0}` and
+    the old one-key form give the same book. Key order is preserved because
+    the draw order is part of reproducibility (keep ICE, EV).
+    """
+    if not isinstance(mix, dict) or not mix:
+        raise ValueError(f'vehicle mix must be a non-empty dict, got {mix!r}')
+    clean = {}
+    for fuel, weight in mix.items():
+        if weight < -_ZERO_TOL:
+            raise ValueError(f'vehicle mix weight for {fuel!r} is negative: {weight}')
+        if weight > _ZERO_TOL:
+            clean[fuel] = float(weight)
+    if not clean:
+        raise ValueError(f'vehicle mix has no positive weight: {mix!r}')
+    return clean
+
+
+def entrant_vehicle_mix(cfg, base_mix, year):
+    """Vehicle allocation for ONE entrant cohort (new business in `year`).
+
+    No `vehicle_ramp` in cfg -> entrants keep the base mix (current behavior).
+    With `vehicle_ramp` (EV entry only, ICE = 1 - EV) the EV share is
+    interpolated linearly from `from` to `to` across the simulation window
+    (cohort_year .. cohort_year + n_years - 1); `n_years == 1` uses `from`.
+    """
+    ramp = (cfg.get('vehicle_ramp') or {}).get('EV')
+    if not ramp:
+        return normalize_mix(base_mix)
+    start = int(cfg['cohort_year'])
+    span = int(cfg['n_years']) - 1
+    t = 0.0 if span <= 0 else min(max((int(year) - start) / span, 0.0), 1.0)
+    ev_share = ramp['from'] + t * (ramp['to'] - ramp['from'])
+    return normalize_mix({'ICE': 1 - ev_share, 'EV': ev_share})
+
+
 # ---------------------------------------------------------------------------
 # Book generation, split into named steps (called in order by gen()).
 # ---------------------------------------------------------------------------
@@ -43,10 +86,11 @@ def normalize_weights(weights):
 def _draw_product_mix(cfg, vehicle_pct, rng, n):
     """Coverage, fuel type and region — three independent categorical draws."""
     df = pd.DataFrame(index=range(n))
+    vehicle_mix = normalize_mix(vehicle_pct)
     df['COVERAGE_TYPE'] = rng.choice(list(cfg['coverage_pct']),
                                      p=normalize_weights(cfg['coverage_pct'].values()), size=n)
-    df['VEHICLE_TYPE'] = rng.choice(list(vehicle_pct),
-                                    p=normalize_weights(vehicle_pct.values()), size=n)
+    df['VEHICLE_TYPE'] = rng.choice(list(vehicle_mix),
+                                    p=normalize_weights(vehicle_mix.values()), size=n)
     df['REGION'] = rng.choice(list(cfg['region_pct']),
                               p=normalize_weights(cfg['region_pct'].values()), size=n)
     return df
@@ -183,6 +227,11 @@ def claim_lambda(df, cfg):
     """
     freq = cfg['frequency']
     cat = df['DRIVER_AGE_CAT'].values
+    # Flood is an EVENT: the flag marks exposure, but the loading only bites
+    # in river-basin flood years (`_FLOOD_YEAR` per row, drawn per region-year).
+    flood_hit = df['FLOOD_RISK'].values
+    if '_FLOOD_YEAR' in df.columns:
+        flood_hit = flood_hit * df['_FLOOD_YEAR'].values
     # Expression grouping mirrors the legacy code (sums are added as groups)
     # so float rounding — and therefore every historic result — is preserved.
     log_rate = (np.full(len(df), cfg['claim_frequency_base'])
@@ -190,7 +239,7 @@ def claim_lambda(df, cfg):
                 + freq['senior'] * (cat == 'Seniors'))
     log_rate += (freq['young_male'] * ((cat == 'Young Adults') & (df['DRIVER_GENDER'].values == 'Male'))
                  + freq['ev'] * (df['VEHICLE_TYPE'].values == 'EV'))
-    log_rate += (freq['flood'] * df['FLOOD_RISK'].values
+    log_rate += (freq['flood'] * flood_hit
                  + freq['theft'] * df['THEFT_RISK'].values
                  + np.log(df['BEHAVIOR_RISK'].values))
     log_rate += (freq['car_age_per_year'] * df['CAR_AGE'].values
@@ -259,12 +308,51 @@ def severity_params(perils, sum_assured, cfg, ev_multiplier):
     return shape, scale, cap
 
 
+def settle_claims(claim_amounts, perils, sum_assured, young, cfg, rng, year):
+    """Settlement on top of the Gamma draws: total-loss rules + excesses.
+
+    One simple rule per own-damage peril:
+      Theft  -> always a total loss: payout = sum assured - excess
+      Fire   -> mixed: total loss with prob `total_loss_prob`, else partial - excess
+      AD     -> mixed: same shape; Young Adults carry `young_excess`
+    Partial payouts are inflated to the claim year, then excess-subtracted
+    (a partial claim at or below the excess is not reported: payout 0);
+    total-loss payouts use the (renewal-depreciated) sum assured.
+    """
+    specs = cfg['severity']['specs']
+    inflation = (1.0 + cfg.get('severity_inflation', 0.0)) ** (int(year) - int(cfg['cohort_year']))
+    out = claim_amounts.copy()
+    for peril in ('AD', 'Fire', 'Theft'):
+        spec = specs.get(peril)
+        if not spec:
+            continue
+        mask = perils == peril
+        if not mask.any():
+            continue
+        sa = sum_assured[mask]
+        excess = np.where(young[mask], spec.get('young_excess', spec['excess']), spec['excess'])
+        payout = spec['payout']
+        if payout == 'total':
+            out[mask] = np.maximum(sa - excess, 0.0)
+        else:
+            total = rng.random(int(mask.sum())) < spec['total_loss_prob']
+            partial = np.maximum(out[mask] * inflation - excess, 0.0)
+            total_pay = np.maximum(sa - excess, 0.0)
+            out[mask] = np.where(total, total_pay, partial)
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Yearly evolution steps (called in order by simulate()).
 # ---------------------------------------------------------------------------
 
 def _age_inforce(book, year, cfg):
-    """Age in-force policies by one year; upgrade bands at the cfg cutoffs."""
+    """Age in-force policies by one year; upgrade bands at the cfg cutoffs.
+
+    Also depreciates the sum assured at renewal (market value, floor `sa_min`)
+    when `sa_depreciation` > 0 — lowers total-loss payouts and the tariff base
+    with vehicle age.
+    """
     aging = cfg['aging']
     mask = book['COHORT_YEAR'] < year
     if mask.any():
@@ -275,6 +363,11 @@ def _age_inforce(book, year, cfg):
              book.loc[mask, 'DRIVER_AGE'] <= aging['adult_max'],
              book.loc[mask, 'DRIVER_AGE'] <= aging['mature_max']],
             ['Young Adults', 'Adults', 'Mature Adults'], default='Seniors')
+        dep = cfg.get('sa_depreciation', 0.0)
+        if dep > 0:
+            floor = cfg.get('sa_min', 0)
+            keep = np.round(book.loc[mask, 'SUM_ASSURED'] * (1 - dep) / 1000) * 1000
+            book.loc[mask, 'SUM_ASSURED'] = np.maximum(keep, floor)
 
 
 def _add_frequency(book, cfg, rng):
@@ -313,6 +406,9 @@ def _add_severity(book, cfg, rng):
 
     shape, scale, cap = severity_params(perils, sum_assured, cfg, ev_multiplier)
     claim_amounts = np.minimum(rng.gamma(shape, scale), cap)
+    young = book['DRIVER_AGE_CAT'].values[claim_index] == 'Young Adults'
+    claim_amounts = settle_claims(claim_amounts, perils, sum_assured, young, cfg, rng,
+                                  book['SIM_YEAR'].iloc[0])
     np.add.at(amount, claim_index, claim_amounts)
 
     # One peril string per policy; multiple claims joined by '/'.
@@ -352,10 +448,27 @@ def _update_ncd(book, cfg):
 
 
 def _add_entrants(book, cfg, vehicle_pct, seed, year, n_years):
-    """Yearly new business: fresh book with the same mix, next seed offset."""
-    entrants = gen(cfg, vehicle_pct, seed + (year - cfg['cohort_year']),
-                   year=year, prefix='ENT', n=int(cfg['n'] * cfg['entrant_frac']))
+    """Yearly new business: fresh book, mix for THIS year (vehicle ramp aware).
+
+    Entrant volume compounds with `entrant_growth` per year.
+    """
+    growth = cfg.get('entrant_growth', 0.0)
+    count = int(cfg['n'] * cfg['entrant_frac'] * (1 + growth) ** (year - cfg['cohort_year']))
+    mix = entrant_vehicle_mix(cfg, vehicle_pct, year)
+    entrants = gen(cfg, mix, seed + (year - cfg['cohort_year']),
+                   year=year, prefix='ENT', n=count)
     return pd.concat([book[book['RENEWED']], entrants], ignore_index=True)
+
+
+def _draw_flood_events(cfg, years, rng):
+    """One flood-event draw per (region, year).
+
+    Returns {year: {region: bool}}; a True year activates the flood loading
+    for flood-flagged policies of that region (see claim_lambda).
+    """
+    probs = cfg['flood_event_prob']
+    return {int(y): {r: bool(rng.random() < probs[r]) for r in sorted(probs)}
+            for y in years}
 
 
 # ---------------------------------------------------------------------------
@@ -373,9 +486,13 @@ def simulate(df0, cfg, vehicle_pct, seed, n_years=None, verbose=True):
     rng = np.random.default_rng(seed)
     active = df0.copy()
     history = []
+    years = [cfg['cohort_year'] + offset for offset in range(n_years)]
+    flood_events = _draw_flood_events(cfg, years, rng)
     for offset in range(n_years):
         year = cfg['cohort_year'] + offset
         active['SIM_YEAR'] = year
+        # Event marker for this year; consumed by claim_lambda's flood term.
+        active['_FLOOD_YEAR'] = active['REGION'].map(flood_events[year]).astype(bool)
 
         _age_inforce(active, year, cfg)
         _add_frequency(active, cfg, rng)

@@ -1,1 +1,14 @@
-/__paycache__/*
+# Python
+__pycache__/
+*.pyc
+
+# Jupyter
+.ipynb_checkpoints/
+
+# MkDocs build output
+site/
+
+# Generated simulation artifacts (regenerate with run_scenarios.py)
+simulation/shared/results/
+simulation/VoltVision_*.xlsx
+simulation/~$*.xlsx

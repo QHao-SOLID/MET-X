@@ -1,0 +1,212 @@
+{
+ "retrieved": "2026-09-18",
+ "method": "Parallel Search (parallel-cli 0.7.1, basic search mode) via the research-lookup skill; results are search-derived titles/snippets, not full-text extractions",
+ "queries": [
+  "Malaysia motor insurance industry statistics 2024 2025: motor claims ratio, claim frequency, gross written premium (PIAM General Insurance Statistics / BNM)",
+  "Malaysia average motor own damage claim cost RM, third-party property damage average claim, bodily injury average court award, vehicle theft statistics PDRM DOSM 2023 2024",
+  "Malaysia motor insurance policy excess standard RM400, young driver excess RM1500, NCD no claim discount table, motor renewal retention rate",
+  "Malaysia EV share new vehicle sales 2025 2026, EV repair cost premium vs ICE, EV motor insurance claims experience",
+  "PIAM motor insurance claims ratio 2024 loss ratio private car percentage Malaysia",
+  "Malaysia vehicle theft statistics 2024 number of cases PDRM DOSM stolen vehicles",
+  "average motor insurance claim Malaysia RM own damage windscreen 2024",
+  "Malaysia EV sales share 2025 total industry volume percent electric vehicles JPJ registrations"
+ ],
+ "sources": [
+  {
+   "id": "piam-2025-results-paultan",
+   "title": "PIAM: Motor insurance posts RM289.3 mil loss in 2025, more and costlier claims, notably with Proton models",
+   "publisher": "paultan.org",
+   "date": "2026-05",
+   "url": "https://paultan.org/2026/05/08/piam-motor-insurance-posts-rm289-3-mil-loss-in-2025-more-and-costlier-claims-notably-with-proton-models",
+   "used_for": ["portfolio_claims_ratio", "own_damage_claim_rate", "avg_claim_severity"],
+   "key_values": [
+    "Motor underwriting loss RM289.3m in 2025",
+    "Private car claim frequency remained above 7% in 2025",
+    "Claim severity rose to RM8,831 (spare-parts inflation)"
+   ]
+  },
+  {
+   "id": "piam-2025-results-thesun",
+   "title": "Malaysia's motor insurance sector lost RM289 million in 2025",
+   "publisher": "The Sun",
+   "date": "2026-05",
+   "url": "https://thesun.my/motoring/malaysias-motor-insurance-sector-lost-rm-289-million-in-2025-with-proton-x50-x70-saga-named-in-claims-data",
+   "used_for": ["avg_claim_severity", "portfolio_claims_ratio"],
+   "key_values": [
+    "Claim severity RM8,831 (2025)",
+    "Private car claim frequency above 7%"
+   ]
+  },
+  {
+   "id": "piam-2025-results-insuranceinfo",
+   "title": "PIAM: Motor insurance posts RM289.3 mil loss in 2025",
+   "publisher": "insuranceinfo.com.my (PIAM consumer portal)",
+   "date": "2026-05",
+   "url": "https://insuranceinfo.com.my/piam-motor-insurance-posts-rm289-3-mil-loss-in-2025-more-and-costlier-claims-notably-with-proton-models",
+   "used_for": ["portfolio_claims_ratio"],
+   "key_values": [
+    "Motor contributed RM10.9bn (45.2% of general insurance premiums) in 2025"
+   ]
+  },
+  {
+   "id": "combined-ratio-autobuzz",
+   "title": "Malaysia's auto insurers are paying out more than they're earning",
+   "publisher": "AutoBuzz.my",
+   "date": "2026-05",
+   "url": "https://autobuzz.my/2026/05/07/malaysias-auto-insurers-are-paying-out-more-than-theyre-earning",
+   "used_for": ["portfolio_claims_ratio"],
+   "key_values": [
+    "Motor combined ratio 103% in 2025 (improved 0.7 pts from 103.7%)"
+   ]
+  },
+  {
+   "id": "piam-fy2025-press",
+   "title": "Malaysia's General Insurance Industry Posts RM1.2 Billion Underwriting Profit as PIAM Brings Full Year Results to East Malaysia",
+   "publisher": "PIAM (Persatuan Insurans Am Malaysia)",
+   "date": "2026",
+   "url": "https://piam.org.my/news-media/stay-ahead/press-releases/article/Malaysia-s-General-Insurance-Industry-Posts-RM1-2-Billion-Underwriting-Profit-as-PIAM-Brings-Full-Year-Results-to-East-Malaysia",
+   "used_for": ["own_damage_claim_rate", "region_context"],
+   "key_values": [
+    "East Malaysia private car loss ratio 45% vs Peninsular; claim frequency 1.7% vs 5.1% nationally (period as reported)"
+   ]
+  },
+  {
+   "id": "premium-levels-carz",
+   "title": "Rising Motor Claims Fueling Shift to Risk-Based Insurance Pricing",
+   "publisher": "Carz Automedia Malaysia",
+   "date": "2025-04",
+   "url": "https://www.carz.com.my/2025/04/rising-motor-claims-fueling-shift-to-risk-based-insurance-pricing",
+   "used_for": ["avg_private_car_premium"],
+   "key_values": [
+    "Average premium paid by private vehicle owners: RM741 (2022), RM810 (2023), RM857 (1H 2024)"
+   ]
+  },
+  {
+   "id": "theft-vtrec-businesstoday",
+   "title": "33,716 Vehicles Stolen In Three Years, Losses Hit RM682 Million",
+   "publisher": "Business Today",
+   "date": "2026-09",
+   "url": "https://www.businesstoday.com.my/2026/09/04/33716-vehicles-stolen-in-three-years-losses-hit-rm682-million",
+   "used_for": ["theft_claim_rate"],
+   "key_values": [
+    "33,716 vehicles reported stolen 2024 - Jul 2026; estimated losses RM682.01m"
+   ]
+  },
+  {
+   "id": "theft-paultan-2024",
+   "title": "Car thefts on the rise in Malaysia - 10,849 vehicles stolen in 2024 up to Sept",
+   "publisher": "paultan.org",
+   "date": "2024-11",
+   "url": "https://paultan.org/2024/11/12/car-thefts-on-the-rise-in-malaysia-10849-vehicles-stolen-in-2024-up-to-sept-pick-ups-suvs-targeted",
+   "used_for": ["theft_claim_rate"],
+   "key_values": [
+    "~10.8k vehicles stolen Jan-Sep 2024 (~13k/yr pace)"
+   ]
+  },
+  {
+   "id": "vtrec-thestar-2024",
+   "title": "Drop in road accident, vehicle theft cases in 2024",
+   "publisher": "The Star",
+   "date": "2025-05",
+   "url": "https://www.thestar.com.my/news/nation/2025/05/29/drop-in-road-accident-vehicle-theft-cases-in-2024",
+   "used_for": ["theft_claim_rate", "frequency_context"],
+   "key_values": [
+    "Insurance-industry-reported road accidents 266,716 in 2024 (from 299,657 in 2023, -11%)",
+    "Vehicle theft and accident cases declined >10% in 2024 (VTAREC)"
+   ]
+  },
+  {
+   "id": "dosm-crime-2023",
+   "title": "Statistik Jenayah 2024 (Crime Statistics)",
+   "publisher": "Department of Statistics Malaysia (DOSM)",
+   "date": "2024",
+   "url": "https://storage.dosm.gov.my/crime/crime_2023.pdf",
+   "used_for": ["theft_claim_rate"],
+   "key_values": [
+    "Official vehicle theft case counts (primary source to prefer in a follow-up extraction)"
+   ]
+  },
+  {
+   "id": "ncd-autore",
+   "title": "NCD Rate Table Malaysia (2026 Guide)",
+   "publisher": "Autore",
+   "date": "2026",
+   "url": "https://autore.my/ncd-rate-malaysia",
+   "used_for": ["ncd_table_confirmation"],
+   "key_values": [
+    "NCD scales 0% to 55% for private cars"
+   ]
+  },
+  {
+   "id": "ncd-piam-motor",
+   "title": "Motor Insurance (insurance 101)",
+   "publisher": "PIAM",
+   "date": "n.d.",
+   "url": "https://piam.org.my/insurance-101/individual/motor",
+   "used_for": ["ncd_table_confirmation", "product_context"],
+   "key_values": [
+    "NCD, excess and betterment are the core consumer levers on motor policies"
+   ]
+  },
+  {
+   "id": "excess-bjak",
+   "title": "What Is 'Excess' in Car Insurance Policies",
+   "publisher": "BJAK",
+   "date": "2026",
+   "url": "https://bjak.my/blog/car-insurance/what-is-excess-in-car-insurance-policies",
+   "used_for": ["excess_standard"],
+   "key_values": [
+    "Standard motor policy excess mechanics in Malaysia"
+   ]
+  },
+  {
+   "id": "excess-liberty-pds",
+   "title": "auto365 Third Party, Fire & Theft (TPFT) Premier - product disclosure",
+   "publisher": "Liberty Insurance Malaysia",
+   "date": "n.d.",
+   "url": "https://www.libertyinsurance.com.my/auto365-tpft-premier",
+   "used_for": ["excess_standard"],
+   "key_values": [
+    "RM400 compulsory excess for unnamed drivers"
+   ]
+  },
+  {
+   "id": "ev-piam-carz",
+   "title": "PIAM: Motor Insurance Still in the Red, EV Boom Adds New Risks",
+   "publisher": "Carz Automedia Malaysia",
+   "date": "2025-10",
+   "url": "https://www.carz.com.my/2025/10/piam-motor-insurance-still-in-the-red-ev-boom-adds-new-risks",
+   "used_for": ["ev_severity_factor", "ev_context"],
+   "key_values": [
+    "EV repair costs higher; EV premiums not yet repriced upward (PIAM)"
+   ]
+  },
+  {
+   "id": "ev-repair-paultan",
+   "title": "EV accident repair more complex and costly than ICE vehicles - PIAM",
+   "publisher": "paultan.org",
+   "date": "2025-10",
+   "url": "https://paultan.org/2025/10/09/ev-accident-repair-more-complex-and-costly-than-ice-vehicles-could-end-up-totalling-the-car-piam",
+   "used_for": ["ev_severity_factor", "total_loss_context"],
+   "key_values": [
+    "EV repair complexity/cost could total vehicles more often"
+   ]
+  },
+  {
+   "id": "ev-registrations-soyacincau",
+   "title": "Malaysia EV registrations surge 148% in July 2026",
+   "publisher": "SoyaCincau",
+   "date": "2026-08",
+   "url": "https://soyacincau.com/2026/08/09/malaysia-jpj-ev-registration-july-2026",
+   "used_for": ["ev_fleet_share"],
+   "key_values": [
+    "JPJ EV registrations +148% YoY (Jul 2026) - fast growth from a small base"
+   ]
+  }
+ ],
+ "notes": [
+  "benchmarks.json target tolerances were set from the key_values above; wide bands reflect snippet-level evidence.",
+  "A follow-up Parallel Extract pass on the primary sources (PIAM FY2025 release, DOSM crime tables, Statista claim-ratio series) is recommended before quoting numbers externally.",
+  "This file is the citation ledger for benchmarks.json; keep both in sync when adding targets."
+ ]
+}

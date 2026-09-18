@@ -1,49 +1,41 @@
-"""Method loader: calculation cells live in the 02x notebooks.
+"""Method loader: pricing methods live in `voltvision/methods/*.py`.
 
-The pricing connector never implements math — it replays the tagged calc
-cell of each method notebook so hub/03/desk/runner quote the exact same
-functions the method owners edit. Tag convention: code cell metadata
-tags ["calc", "<regime>"]. Already-registered regimes are skipped,
-so calling ensure twice is harmless.
+Each method module defines `CARD`, implements its pricer, and calls
+`register_pricer(...)` at import time. The loader imports every module in the
+package — so a new file joins the desk with zero connector edits — and then
+verifies the core regimes are registered.
+
+Module name == regime name by convention (tariff.py registers 'tariff').
 """
 
-import json
-from pathlib import Path
+import importlib
+import pkgutil
 
-# Core set: every full-set run expects these three to exist afterwards.
-CORE_METHODS = {
-    'tariff': '02a_tariff.ipynb',
-    'glm': '02b_glm.ipynb',
-    'telem': '02c_telem.ipynb',
-}
+from . import methods as methods_pkg
+from .methods import CORE_METHODS
 
 
-def calc_source(nb_path, tag):
-    # Pull the raw source of a notebook's calc cell without running anything.
-    # Raises KeyError naming notebook + tag when the cell is absent/mistagged.
-    j = json.loads(Path(nb_path).read_text(encoding='utf-8'))
-    srcs = [''.join(c['source']) for c in j['cells']
-            if c['cell_type'] == 'code'
-            and 'calc' in c.get('metadata', {}).get('tags', [])
-            and tag in c.get('metadata', {}).get('tags', [])]
-    if not srcs:
-        raise KeyError(f"no cell tagged ['calc', {tag!r}] in {nb_path}")
-    return '\n'.join(srcs)
+def method_modules():
+    """{module_name: source_path} for every method module in the package."""
+    return {m.name: f'voltvision/methods/{m.name}.py'
+            for m in pkgutil.iter_modules(methods_pkg.__path__)
+            if not m.name.startswith('_')}
 
 
 def ensure_methods(root=None, methods=None):
-    # Exec each missing regime's calc cell; the cell registers itself.
-    # Runs in a fresh namespace so notebook globals can't leak in —
-    # the cell must be self-contained (its own imports).
-    # Raises RuntimeError if a cell runs but forgets to register.
+    """Import missing method modules; returns the PRICERS registry.
+
+    `methods` optionally narrows the import set (iterable of module names);
+    `root` is accepted for API compatibility and ignored.
+    """
     from .pricing import PRICERS
-    root = Path(root or '.')
-    for name, nb in (methods or CORE_METHODS).items():
+    names = list(methods) if methods is not None else list(method_modules())
+    for name in names:
         if name in PRICERS:
             continue
-        print(f"loader: {nb} -> regime '{name}'")
-        src = calc_source(root / nb, name)
-        exec(compile(src, nb, 'exec'), {'__name__': f'voltvision_method_{name}'})
-        if name not in PRICERS:
-            raise RuntimeError(f"{nb} calc cell did not register {name!r}")
+        print(f"loader: importing voltvision/methods/{name}.py")
+        importlib.import_module(f'.methods.{name}', __package__)
+    missing = [m for m in CORE_METHODS if m not in PRICERS]
+    if missing:
+        raise RuntimeError(f'core regimes missing after loading: {missing}')
     return PRICERS

@@ -1,0 +1,47 @@
+site_name: MET-X — VoltVision Motor Simulator
+site_description: Malaysian motor insurance simulation + black-box pricing lab
+docs_dir: docs
+use_directory_urls: true
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.suggest
+  palette:
+    - scheme: default
+      primary: blue grey
+      accent: amber
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.snippets:
+      base_path: [".", "docs"]
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - How the simulation works: how-the-simulation-works.md
+  - Assumptions: assumptions.md
+  - Scenarios: scenarios.md
+  - Claim settlement & realism: claim-model.md
+  - Pricing:
+      - Contract & dispatch: pricing.md
+      - Tariff: methods/tariff.md
+      - GLM: methods/glm.md
+      - Telematics: methods/telem.md
+  - Analysis: analysis.md
+  - Benchmarks & sources: sources.md
+  - Development: development.md

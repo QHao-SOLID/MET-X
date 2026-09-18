@@ -11,8 +11,9 @@ What the system knows (and nothing more):
   - output naming:   schema.PREM_<regime> for combined result files
 
 The connector never interprets a parameter: values are opaque and forwarded.
-How a premium is computed lives in the 02x notebooks' CALC cells, which
-declare their card and register themselves:
+How a premium is computed lives in the pricing method modules
+(`voltvision/methods/*.py`), each of which declares its card and registers
+itself:
 
     CARD = {'sst': {'default': 0.08, 'unit': 'fraction', 'note': '...'}, ...}
     register_pricer('tariff', price_tariff, card=CARD, info={'label': 'Tariff'})
@@ -197,38 +198,20 @@ def api_quote(book, regime, card, cfg, base_cfg=None):
     }
 
 
-def discover_methods(root=None, pattern='02*.ipynb'):
-    # Find every method notebook (any 02*.ipynb with a tagged calc cell) and
-    # register whatever each one owns. New 02d_x.ipynb joins with zero
-    # connector edits — just add the file. Returns {regime: notebook}.
-    from .loader import calc_source, CORE_METHODS
-    from pathlib import Path
-    root = Path(root or '.')
-    found = {}
-    for nb in sorted(root.glob(pattern)):
-        try:
-            import json
-            tags = {t for c in json.loads(nb.read_text(encoding='utf-8'))['cells']
-                    if c['cell_type'] == 'code'
-                    for t in c.get('metadata', {}).get('tags', [])}
-        except Exception:
-            continue
-        for tag in sorted(tags - {'calc'}):
-            if tag not in PRICERS:
-                exec(compile(calc_source(nb, tag), nb.name, 'exec'),
-                     {'__name__': f'voltvision_method_{tag}'})
-            found[tag] = nb.name
-    missing = [m for m in CORE_METHODS if m not in PRICERS]
-    if missing:
-        raise RuntimeError(f"core regimes missing after discovery: {missing}")
-    return found
+def discover_methods(root=None):
+    # Import every module in voltvision/methods/ (each registers itself on
+    # import). A new module joins with zero connector edits.
+    # Returns {regime: module path}.
+    from .loader import ensure_methods, method_modules
+    ensure_methods(root=root)
+    return method_modules()
 
 
 def ensure_core_methods(root=None):
-    # Load tariff/glm/telem calculations from their 02x notebooks.
-    # Call once before quoting. No-op for already-registered methods.
-    from .loader import ensure_methods, CORE_METHODS
-    return ensure_methods(root=root, methods=CORE_METHODS)
+    # Import the pricing method modules (tariff/glm/telem live in
+    # voltvision/methods/*.py). Call once before quoting; no-op if loaded.
+    from .loader import ensure_methods
+    return ensure_methods(root=root)
 
 
 # ---- Reporting helpers (regime comparison only, all N-safe) ----
@@ -247,6 +230,10 @@ def lr_by(b, col):
 
 def rho(b):
     # Premium-to-count rank correlation: does dearer cover track real risk?
+    # Constant premium (e.g. a flat demo pricer) has no rank correlation —
+    # return NaN without making scipy warn.
+    if b['FINAL_PREMIUM_SST'].nunique() <= 1:
+        return float('nan')
     return spearmanr(b['FINAL_PREMIUM_SST'], b['CLAIM_COUNT']).correlation
 
 

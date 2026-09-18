@@ -4,7 +4,20 @@
  "n_years": 5,
  "seed": 20260916,
  "regimes": ["tariff", "glm", "telem"],
- "vehicle_mix": {"ICE": 0.9, "EV": 0.1},
+ "vehicle_mix": {"ICE": 0.96, "EV": 0.04},
+ "vehicle_ramp": {},
+
+ "flood_event_prob": {
+  "Peninsular Malaysia": 0.25,
+  "East Malaysia (Sabah, Sawarak & Labuan)": 0.40
+ },
+
+ "severity_inflation": 0.06,
+
+ "entrant_growth": 0.05,
+
+ "sa_depreciation": 0.10,
+ "sa_min": 5000,
 
  "coverage_pct": {
   "Comprehensive": 0.65,
@@ -56,14 +69,14 @@
   "Over 4,400 cc / EV > 300 kW"
  ],
  "engine_weights": [0.25, 0.20, 0.18, 0.15, 0.10, 0.07, 0.03, 0.02],
- "entrant_frac": 0.50,
+ "entrant_frac": 0.13,
 
  "sa_stats": {
-  "ICE": {"median": 50000, "spread": 0.5},
-  "EV": {"median": 80000, "spread": 0.5}
+  "ICE": {"median": 30000, "spread": 0.5},
+  "EV": {"median": 70000, "spread": 0.5}
  },
 
- "claim_frequency_base": -2.00,
+ "claim_frequency_base": -2.35,
  "frequency": {
   "young_adult": 0.40,
   "senior": 0.26,
@@ -108,24 +121,31 @@
  "severity": {
   "perils": ["AD", "Windscreen", "Theft", "Fire", "TPPD", "TPBI"],
   "specs": {
-   "TPBI": {"shape": 0.35, "scale": 70000, "cap": null, "ev_loading": false},
-   "TPPD": {"shape": 0.55, "scale": 9000, "cap": 3000000, "ev_loading": false},
-   "Windscreen": {"shape": 2.00, "scale": 700, "cap": 15000, "ev_loading": false},
+   "TPBI": {"shape": 0.35, "scale": 70000, "cap": null, "ev_loading": false,
+            "payout": "partial", "excess": 0},
+   "TPPD": {"shape": 0.55, "scale": 9000, "cap": 3000000, "ev_loading": false,
+            "payout": "partial", "excess": 0},
+   "Windscreen": {"shape": 2.00, "scale": 700, "cap": 15000, "ev_loading": false,
+                  "payout": "partial", "excess": 0},
    "Theft": {"shape": 1.10, "scale": {"sa_fraction": 0.20, "min": 8000, "max": 20000},
-             "cap": "sum_assured", "ev_loading": true},
-   "Fire": {"shape": 0.90, "scale": {"sa_fraction": 0.15, "min": 7000, "max": 18000},
-            "cap": "sum_assured", "ev_loading": true},
-   "AD": {"shape": 0.60, "scale": {"sa_fraction": 0.10, "min": 4500, "max": 12000},
-          "cap": "sum_assured", "ev_loading": true}
+             "cap": "sum_assured", "ev_loading": true,
+             "payout": "total", "excess": 400},
+   "Fire": {"shape": 0.90, "scale": 12000,
+            "cap": "sum_assured", "ev_loading": true,
+            "payout": "mixed", "total_loss_prob": 0.60, "excess": 400},
+   "AD": {"shape": 0.60, "scale": 5500,
+          "cap": "sum_assured", "ev_loading": true,
+          "payout": "mixed", "total_loss_prob": 0.08, "excess": 400,
+          "young_excess": 1500}
   }
  },
  "peril_dist": {
-  "Comprehensive": {"AD": 0.58, "Windscreen": 0.15, "Theft": 0.08,
-                    "Fire": 0.04, "TPPD": 0.12, "TPBI": 0.03},
+  "Comprehensive": {"AD": 0.54, "Windscreen": 0.30, "Theft": 0.008,
+                    "Fire": 0.002, "TPPD": 0.11, "TPBI": 0.04},
   "TPO": {"TPPD": 0.78, "TPBI": 0.22},
-  "TPFT": {"TPPD": 0.444, "TPBI": 0.111, "Theft": 0.296, "Fire": 0.148}
+  "TPFT": {"TPPD": 0.80, "TPBI": 0.15, "Theft": 0.04, "Fire": 0.01}
  },
- "ev_severity_factor": 1.20,
+ "ev_severity_factor": 1.30,
  "severity_multiplier": 1.00,
 
  "telematics": {

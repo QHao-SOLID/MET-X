@@ -5,8 +5,8 @@ Single source of truth for **simulation assumptions**. Scenarios in
 the base value; everything else is inherited. Unknown keys are rejected by the
 loader (this file is the list of what exists).
 
-Tariff rates/knobs are **not** here — they live in `02a_tariff.ipynb` (the
-tariff method owns its numbers). Pricing methods receive their numbers through
+Tariff rates/knobs are **not** here — they live in
+`voltvision/methods/tariff.py` (the tariff method owns its numbers). Pricing methods receive their numbers through
 rate cards; `pricing` below is only an optional override layer.
 
 ## Run controls
@@ -18,7 +18,13 @@ rate cards; `pricing` below is only an optional override layer.
 | `n_years` | years | Horizon; also the window length of the out-of-sample training book. |
 | `seed` | int | Simulation RNG seed. Overridable per scenario (`"seed": 7`) and by `seeds.json`. |
 | `regimes` | list of names | Pricing methods to run (names must exist in the registry). |
-| `vehicle_mix` | share dict | Default ICE/EV split for scenarios without their own `vehicle`. |
+| `vehicle_mix` | share dict | Default ICE/EV split for scenarios without their own `vehicle`. Order (ICE, EV) is part of the RNG draw — keep it. |
+| `vehicle_ramp` | `{"EV": {"from": x, "to": y}}` | Foreseeable mix shift: entrant EV share interpolates linearly from `from` to `to` across the simulation window (`cohort_year` … `cohort_year + n_years − 1`); ICE = 1 − EV. Entrants only — existing policies keep their fuel type. `{}` = no ramp. |
+| `flood_event_prob` | P(event year) per region | A flood loading only applies in years a region draws a flood event; the `FLOOD_RISK` flag marks exposure (still used for pricing). |
+| `severity_inflation` | fraction/yr | Claim payouts compound by `(1+r)^(SIM_YEAR − cohort_year)` (repair/medical inflation). |
+| `entrant_growth` | fraction/yr | New-business volume compounds per year: `n × entrant_frac × (1+g)^t`. |
+| `sa_depreciation` | fraction/yr | Sum assured marked down at renewal (market value), lowering total-loss payouts and the tariff base with age. |
+| `sa_min` | RM | Floor for depreciated sum assured. |
 | `pricing` | regime → overrides | Optional rate-card overrides; merged between method defaults and scenario overrides. Leave `{}` to use method defaults. |
 | `reporting` | see below | Reporting constants (target band, appetite, retained drop, quantiles). |
 
@@ -88,6 +94,10 @@ rate cards; `pricing` below is only an optional override layer.
 | `severity.specs.<peril>.shape` | Gamma shape | Lower shape = heavier tail. |
 | `severity.specs.<peril>.scale` | RM or SA rule | Number = absolute RM; object = `clip(SUM_ASSURED × sa_fraction, min, max)`. |
 | `severity.specs.<peril>.cap` | RM / `"sum_assured"` / `null` | Payout cap per claim. |
+| `severity.specs.<peril>.payout` | `partial` / `total` / `mixed` | Settlement: `total` pays sum assured − excess; `mixed` flips a `total_loss_prob` coin per claim; `partial` keeps the Gamma draw. |
+| `severity.specs.<peril>.total_loss_prob` | share | Probability a claim is settled as a total loss (mixed payout only). |
+| `severity.specs.<peril>.excess` | RM | Deductible subtracted from the payout (partial at/below excess → not reported). |
+| `severity.specs.<peril>.young_excess` | RM | Higher excess for Young Adults (overrides `excess`). |
 | `severity.specs.<peril>.ev_loading` | bool | Whether `ev_severity_factor` multiplies this peril's scale. |
 | `peril_dist` | shares per coverage | Peril mix used when drawing a claim's peril; keys must equal `severity.perils`. |
 | `ev_severity_factor` | multiplier | EV repair loading (own-damage perils only, where `ev_loading` is true). |
@@ -133,7 +143,7 @@ Reserved keys in a scenario entry:
 | Key | Meaning |
 |---|---|
 | `name` | Scenario name; used in file names and the manifest. |
-| `vehicle` | `"ICE"` / `"EV"` / `"MIX"` or an explicit `{"ICE": 0.6, "EV": 0.4}`. |
+| `vehicle` | Allocation dict only: `{"ICE": 0.0, "EV": 1.0}` (EV-only) or `{"ICE": 0.6, "EV": 0.4}` (mixed). Absent → template `vehicle_mix`. Zero weights are dropped (0% behaves as absent). |
 | `seed` | Runs this scenario once with this seed (overrides `seeds.json`). |
 | `pricing` | `{regime: {param: value}}` rate-card overrides; unknown params are rejected by the method's declared card. |
 

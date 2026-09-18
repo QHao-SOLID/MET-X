@@ -10,7 +10,7 @@ You are an actuarial simulation assistant for this project.
 - You write for an actuarial/data audience: loss ratio, frequency/severity, NCD, tariff vs ML pricing
 - Your tasks: verify simulation logic, extend pricing methods, manage scenarios/assumptions, keep parity with the reference numbers
 
-## Architecture (the five rules)
+## Architecture (the rules)
 
 1. **`base_template.json` is the single source of truth for simulation assumptions.**
    Scenarios in `scenarios/*.json` are flat patches: keys present replace base
@@ -20,89 +20,111 @@ You are an actuarial simulation assistant for this project.
    `func(book, card, cfg, base_cfg) -> book + FINAL_PREMIUM_SST` (`cfg` =
    scenario assumptions, `base_cfg` = the unpatched template), the registry,
    a blind merge of card blobs, and the output naming `PREM_<regime>`. It never
-   knows what a parameter means. All premium math lives in the 02x CALC cells.
-3. **Rate-card standard.** Every method declares its parameters in its CALC cell:
-   `CARD = {'param': {'default': v, 'unit': ..., 'note': ...}}`.
+   knows what a parameter means. All premium math lives in
+   `voltvision/methods/*.py`.
+3. **Rate-card standard.** Every method module declares its parameters in `CARD`:
+   `{'param': {'default': v, 'unit': ..., 'note': ...}}`.
    Resolution order: method defaults ← `cfg['pricing'][regime]` ←
    `scenario['pricing'][regime]`. Overriding an undeclared param fails loud.
-3b. **Training-world rule (big one).** Model training books are generated from
-   `base_cfg` (the unpatched template), NOT the scenario cfg, one window earlier.
-   Scenario engine patches therefore never leak into training: a stressed
-   scenario prices against unchanged historical experience and shows honest LR
-   deterioration instead of pre-pricing the shock via inflated premiums.
-   Training knobs are declared in the 02b/02c `CARD` and overridable per
-   scenario via `"pricing": {"glm": {...}}` / `{"telem": {...}}`:
-   `train_book_seed` (42; `null` = legacy in-sample), `train_window_years` (5),
-   `train_vehicle` (`null` = training world's `vehicle_mix`), `train_dgp` ({}
-   = no extra training-world overrides), `train_frac`, `train_seed`.
-4. **Tariff data lives only in `02a_tariff.ipynb`** (2015 schedule tables, knobs,
-   formula). Nothing tariff-specific exists in config or system code.
-5. **Simulation is premium-independent.** Same seed + same cfg = identical book.
+4. **Training-world rule (big one).** Model training books are generated from
+   `base_cfg` (the unpatched template), NOT the scenario cfg, one window earlier
+   (`ml.training_history`). Scenario engine patches therefore never leak into
+   training: a stressed scenario prices against unchanged historical experience
+   and shows honest LR deterioration. Training knobs live in the glm/telem CARD:
+   `train_book_seed` (42; `null` = in-sample, comparison only),
+   `train_window_years` (5), `train_vehicle` (`null` = training world mix),
+   `train_dgp` ({}), `train_frac`, `train_seed`.
+5. **Tariff data lives only in `voltvision/methods/tariff.py`** (2015 schedule
+   tables, knobs, formula). Nothing tariff-specific exists in config or system code.
+6. **Simulation is premium-independent.** Same seed + same cfg = identical book.
    Draw order AND float-expression grouping are part of reproducibility —
    never reorder RNG calls or regroup arithmetic in `simulate.py` without a
    parity run (see Parity gate).
+7. **Claim model is realistic-only** (industry-calibrated). Total-loss
+   settlement for Theft/Fire/AD, excesses (400 / young 1,500), flood as event
+   years, severity inflation, SA depreciation, entrant growth. The legacy
+   pre-realism baseline lives in git history only — do not reintroduce modes.
 
-## File structure
+## File structure (monorepo)
+
+Repo root: `README.md` (overview), `AGENT.md` (this file), `mkdocs.yml`,
+`docs/` (MkDocs Material site), `LICENSE`.
+
+The project lives in **`simulation/`** — run everything from there:
 
 - `base_template.json` — simulation assumptions (run controls + engine)
 - `TEMPLATE.md` — every key: unit + effect of raising it; scenario reserved keys
-- `seeds.json` — `{"seeds": [0, 1, 2]}`; every scenario runs once per seed unless it patches `seed`
-- `scenarios/*.json` — flat scenario patches (one file = a group; currently
-  `base`, `hard_combo`, `mix_coverage`)
+- `benchmarks.json` — sourced industry targets (PIAM 2025, VTAREC, NCD/excess sources) for the §10 realism checks; each target carries `source_ids`
+- `sources/benchmarks_sources.json` + `SOURCES.md` — the citation ledger: URLs, publishers, key values, exact search queries, retrieval method/date (Parallel Search, search-derived — extract before external quoting)
+- `seeds.json` — `{"seeds": [42]}`; every scenario runs once per seed unless it patches `seed`
+- `scenarios/*.json` — flat scenario patches; the runner reads every file. The
+  user's set is fluid — don't assume specific files beyond the ones on disk.
+  Current conventions: `matrix.json` (ICE/EV/MIX, feeds the §5b matrix table in
+  `analysis.ipynb` — keep those names), `base`, `hard_combo`. Earlier sets
+  (`mix_coverage`) live in git history.
 - `run_scenarios.py` — CLI loop (`--quick --scenarios --seeds --csv --excel --grid`)
-- `02_pricing.ipynb` — desk: cards, quote N regimes, what-if, add-a-method demo
-- `02a_tariff.ipynb` / `02b_glm.ipynb` / `02c_telem.ipynb` — methods; the tagged
-  `calc` cell defines `CARD` + pricer + `register_pricer`. New method = new
-  `02d_*.ipynb` with a tagged calc cell (zero system edits)
-- `04_analysis.ipynb` — analysis reading `shared/results/` only:
+- `pricing_desk.ipynb` — desk: cards, quote N regimes, what-if, add-a-method demo
+- `analysis.ipynb` — analysis reading `shared/results/` only:
   §1 exec summary, §2 cohort, §3 claims, §4 validation, §5 pricing comparison,
-  §5b cross-scenario review table, §5c leak check (in-sample vs out-of-sample),
-  §6 telem tiers, §7 EV vs ICE, §8 seed spread (from manifest), §9 verdicts
+  §5b cross-scenario review table, §6 telem tiers, §7 EV vs ICE, §8 seed spread
+  (from manifest), §10 realism vs benchmarks
 - `voltvision/`:
   - `schema.py` — `COLS`, `PREM_<regime>` naming, regime-name validation
   - `assumptions.py` — `load_template`, `load_seeds`, `build_cfg`, `validate`, `describe_patch`
-  - `simulate.py` — `gen`, `claim_lambda`, `loading`, `simulate`, `simulate_book` (cached, capped)
-  - `pricing.py` — connector: `Card`, `PRICERS`, `register_pricer`, `resolve_cards`, `quote`, `price_many`, `api_quote`, reporting helpers
-  - `ml.py` — shared ML helpers for method cells (encode/fit/severity)
-  - `loader.py` — replays 02x CALC cells (`ensure_core_methods`, `discover_methods`)
+  - `simulate.py` — `gen`, `claim_lambda`, `loading`, `draw_perils`, `severity_params`,
+    `settle_claims`, `simulate`, `simulate_book` (cached, capped) and the step helpers
+  - `methods/` — one module per pricing method (tariff.py, glm.py, telem.py);
+    each declares `CARD` + pricer + registers on import. New method = new module
+  - `pricing.py` — connector: `Card`, `PRICERS`, `register_pricer`, `resolve_cards`,
+    `quote`, `price_many`, `api_quote`, reporting helpers
+  - `ml.py` — shared ML helpers (encode/fit/severity, `training_history`)
+  - `loader.py` — imports every module in `methods/` (`ensure_core_methods`, `discover_methods`)
   - `io.py` — result contract: `combine`, `save_result`, `load_result`, `premium_columns`, `split_premiums`, `sim_book`, `books_from_result`, `load_manifest`, `update_manifest`
   - `runner.py` — `run_scenarios` loop + `load_scenario_groups`, `resolve_vehicle`
 - `shared/results/<scenario>_s<seed>.pkl` — combined book (sim cols + `PREM_*`); `manifest.json` = cfg/cards snapshot + metrics
-- `voltvision_all.ipynb`, `voltvision_simple.ipynb` — FROZEN references; read-only
+- `Form-5-Mathematics-Textbook-DLP.pdf` — tariff schedule source
+- NOTE: `voltvision_all.ipynb` / `voltvision_simple.ipynb` were removed by the
+  user; do not recreate without being asked.
 
 ## Contracts
 
 - Combined file: `schema.COLS` + one `PREM_<regime>` per regime. `io.books_from_result(df)`
   returns `{regime: book with FINAL_PREMIUM_SST}` so all reporting helpers work for any N.
 - Manifest entry per run: `{scenario, seed, file, saved_at, cfg, cards, metrics{regime:{lr, retained_lr, rho, avg_prem}}}`
-- Scenario reserved keys: `name`, `vehicle` (`"ICE"|"EV"|"MIX"` or `{"ICE":0.6,"EV":0.4}`), `seed`, `pricing`
+- Scenario reserved keys: `name`, `vehicle` (allocation dict only — `{"ICE":0.0,"EV":1.0}` for EV-only, `{"ICE":0.6,"EV":0.4}` for mixed; zero weights dropped), `seed`, `pricing`
+- `vehicle_ramp` (template/scenario key, optional): `{"EV": {"from": x, "to": y}}` — entrant EV share moves linearly across the simulation window (`cohort_year … cohort_year+n_years−1`), ICE = 1 − EV, entrants only; `{}` = off. Existing policies never change fuel type.
+- Settlement: `severity.specs.<peril>` carries `payout` (partial/total/mixed), `total_loss_prob`, `excess`/`young_excess`; `severity_inflation`, `sa_depreciation`/`sa_min`, `entrant_growth`, `flood_event_prob` are top-level levers. §10 in `analysis.ipynb` scores a run against `benchmarks.json` (PASS/FAIL).
 - Filenames always seed-suffixed: `<scenario>_s<seed>.pkl`. Scenario names may contain dots — build file paths by string concatenation, never `Path.with_suffix`
 
 ## Commands
 
+Run from `simulation/` (or prefix paths, e.g. `python simulation/run_scenarios.py`):
+
 - Full sweep: `python run_scenarios.py` (all groups × `seeds.json`)
 - Smoke: `python run_scenarios.py --quick`
 - Subset: `python run_scenarios.py --scenarios mix_60_40 --seeds 0`
-- Export: `python run_scenarios.py --excel MIX_s0` → `VoltVision_Motor_Simulation_MIX_s0.xlsx`
-- Notebooks: `02_pricing.ipynb` (desk) → `02a/b/c` (edits to methods) → `04_analysis.ipynb`
+- Export: `python run_scenarios.py --excel MIX_s42` → `VoltVision_Motor_Simulation_MIX_s42.xlsx`
+- Notebooks: `pricing_desk.ipynb` (desk) then `analysis.ipynb` (deep-dive)
 - Install deps: `pip install numpy pandas matplotlib seaborn scipy scikit-learn openpyxl`
+- Docs (repo root): `mkdocs serve` / `mkdocs build --strict` — pages in `docs/`,
+  snippets embed `simulation/TEMPLATE.md` and `simulation/SOURCES.md`
 
 ## Parity gate
 
-Engine-enumeration check (no engine patches) — full size, seeds 20260916,
-ICE/EV/MIX books must reproduce:
-- ICE: Tariff 73.02 / GLM 62.05 / telem 62.13
-- EV:  Tariff 70.72 / GLM 63.75 / telem 63.83
-- MIX: Tariff 74.45 / GLM 62.87 / telem 62.89
+Full-size, seed 42, standard books (unified realistic system) must reproduce:
+
+- ICE: Tariff 83.38 / GLM 64.46 / telem 64.87
+- EV:  Tariff 59.72 / GLM 54.72 / telem 55.06
+- MIX (== `base`): Tariff 80.08 / GLM 65.06 / telem 65.16
+
 Note: scenarios that patch ENGINE assumptions (frequency, severity, coverage
 mix) intentionally produce different ML numbers since the training-world fix
-(rule 3b) — only the unpatched books are the gate. Example: `combo_hard` GLM
-changed 52.87 → 71.35 (honest LR) with premium 3,405 → 2,523.
-Engine-level check (fast): quick MIX (n=1000, 2y, seed 20260916) rows 2364 and
-`pd.util.hash_pandas_object(book).sum() == 8307451061950880803`; full MIX rows 84041,
-hash `8141802116450118471`; training book (seed 42, n=1000, cohort−5, 5y) rows 8341,
-hash `7044705024676141575`.
-Spot-check: `mix_60_40` seed 42 = Tariff 71.39 / GLM 62.75 / telem 62.80.
+(rule 4) — only the unpatched books are the gate.
+Engine-level checks (fast): quick MIX (n=1000, 2y, seed 20260916) rows **2014**,
+`pd.util.hash_pandas_object(book).sum() == 1878879944891936264`; full MIX rows
+**54118**, hash `12995343068305400064`; training book (seed 42, cohort−5, 5y)
+rows **54006**, hash `5278185049816064045`.
+Spot-check: `mix_60_40` seed 42 = Tariff 72.87 / GLM 63.14 / telem 63.37.
 
 ## Practices
 
@@ -110,20 +132,23 @@ Spot-check: `mix_60_40` seed 42 = Tariff 71.39 / GLM 62.75 / telem 62.80.
 - Verify with small runs first (`--quick`), then the parity gate before claiming a refactor is safe
 - Readability standard (enforced): step functions over clever one-liners, spelled-out
   variable names, comments explaining why (units + effect of raising); structural
-  grouping mirrors the legacy arithmetic exactly where parity matters
-- Known gaps to name: TPO tariff underprices (LR >100%); EV-ramp entrant mix not
-  implemented; flood/theft P(True) semantics (0.40/1.00 and 0.60/0.85) kept from legacy
+  grouping fixed where reproducibility matters
+- Known gaps to name: TPO tariff underprices (LR >100%) until knobs are raised;
+  BI severity may need re-calibration as award data improves; IBNR/development
+  and price-sensitive retention are out of scope for now
+- Realism tooling: `benchmarks.json` + `analysis.ipynb` §10 score any run vs
+  sourced industry targets (default book: 6/6 PASS)
 - Never feed pricing methods the hidden truth: `CLAIM_LAMBDA` and `BEHAVIOR_RISK` are
   simulation labels — methods may use observable columns only (telematics_score is the
   device proxy)
 
 ## Boundaries
 
-- ✅ **Always do:** edit `base_template.json`/`scenarios/` for assumptions; edit the
-  owning 02x notebook for premium math; keep calculations in method notebooks; run the
-  parity gate after touching `simulate.py` or method cells
-- ⚠️ **Ask first:** adding a new template key (document it in `TEMPLATE.md`), changing
-  scenario reserved keys, touching the frozen reference notebooks
+- ✅ **Always do:** edit `base_template.json`/`scenarios/` for assumptions; edit
+  `voltvision/methods/*.py` for premium math; run the parity gate after touching
+  `simulate.py` or method modules; keep docs in `docs/` in sync when behaviour changes
+- ⚠️ **Ask first:** adding a new template key (document it in `TEMPLATE.md`),
+  changing scenario reserved keys, changing settlement rules
 - 🚫 **Never do:** hardcode pricing parameters in system code; reorder RNG calls or
   arithmetic expressions in `simulate.py` without parity evidence; hand-edit
   `shared/results/` or `.xlsx` artifacts; present a single regime in isolation

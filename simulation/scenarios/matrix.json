@@ -1,0 +1,13 @@
+[
+    {
+        "name": "ICE",
+        "vehicle": {"ICE": 1.0}
+    },
+    {
+        "name": "EV",
+        "vehicle": {"EV": 1.0}
+    },
+    {
+        "name": "MIX"
+    }
+]

@@ -6,7 +6,7 @@ What lives here:
   REGIME_RE regime names must match this (safe for column names / JSON keys)
 
 Everything numeric lives in base_template.json (simulation assumptions) or in
-the owning 02x pricing notebook (rate cards). This file holds no assumptions.
+the owning pricing method module (rate cards). This file holds no assumptions.
 """
 
 import re

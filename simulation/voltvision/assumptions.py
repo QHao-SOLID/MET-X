@@ -22,7 +22,10 @@ SEEDS_PATH = ROOT / 'seeds.json'
 TEMPLATE_KEYS = [
     # run controls
     'n', 'cohort_year', 'n_years', 'seed', 'regimes', 'vehicle_mix',
-    'pricing', 'reporting',
+    'vehicle_ramp', 'pricing', 'reporting',
+    # claim-experience levers
+    'flood_event_prob', 'severity_inflation',
+    'entrant_growth', 'sa_depreciation', 'sa_min',
     # book composition
     'coverage_pct', 'region_pct', 'generation_pct', 'age_bands', 'gender_pct',
     'car_age_median', 'car_age_sigma', 'sa_stats', 'engine_bands',
@@ -131,11 +134,55 @@ def validate(cfg):
     fuels = set(cfg['vehicle_mix']) | set(cfg['sa_stats'])
     if set(cfg['sa_stats']) != fuels:
         raise ValueError(f'sa_stats must cover fuels {sorted(fuels)}')
+    # Vehicle ramp (optional): EV entry only, shares within [0, 1].
+    ramp = cfg.get('vehicle_ramp') or {}
+    if ramp:
+        if 'EV' not in cfg['vehicle_mix']:
+            raise ValueError('vehicle_ramp declared but no EV fuel in vehicle_mix')
+        if set(ramp) != {'EV'}:
+            raise ValueError('vehicle_ramp supports the EV entry only '
+                             "(ICE derives as 1 - EV); found " + str(sorted(ramp)))
+        for key in ('from', 'to'):
+            value = ramp['EV'].get(key)
+            if not isinstance(value, (int, float)) or not 0.0 <= value <= 1.0:
+                raise ValueError(f'vehicle_ramp.EV.{key} must be a share within [0, 1] — '
+                                 f'got {value!r}')
     # Regime names are identifier-safe (used in PREM_ columns).
     from .schema import check_regime_name
     for name in cfg['regimes']:
         check_regime_name(name)
+    _validate_claim_levers(cfg)
     return cfg
+
+
+def _validate_claim_levers(cfg):
+    """Validate the claim-experience levers and settlement specs."""
+    missing = set(cfg['region_pct']) - set(cfg.get('flood_event_prob', {}))
+    if missing:
+        raise ValueError(f'flood_event_prob missing regions: {sorted(missing)}')
+    for region, prob in cfg['flood_event_prob'].items():
+        if not 0.0 <= prob <= 1.0:
+            raise ValueError(f'flood_event_prob[{region!r}] must be within [0, 1] — got {prob!r}')
+    for key, hi in (('severity_inflation', 0.25), ('entrant_growth', 0.5),
+                    ('sa_depreciation', 0.5)):
+        value = cfg.get(key, 0.0)
+        if not 0.0 <= value <= hi:
+            raise ValueError(f'{key} must be within [0, {hi}] — got {value!r}')
+    if cfg.get('sa_min', 0) <= 0:
+        raise ValueError('sa_min must be positive')
+    for peril, spec in cfg['severity']['specs'].items():
+        payout = spec.get('payout', 'partial')
+        if payout not in ('partial', 'total', 'mixed'):
+            raise ValueError(f'severity.specs[{peril!r}].payout must be '
+                             f"partial | total | mixed — got {payout!r}")
+        if payout == 'mixed':
+            prob = spec.get('total_loss_prob')
+            if not isinstance(prob, (int, float)) or not 0.0 <= prob <= 1.0:
+                raise ValueError(f'severity.specs[{peril!r}].total_loss_prob must be '
+                                 f'within [0, 1] — got {prob!r}')
+        for key in ('excess', 'young_excess'):
+            if key in spec and spec[key] < 0:
+                raise ValueError(f'severity.specs[{peril!r}].{key} must be >= 0')
 
 
 def describe_patch(template, scenario):

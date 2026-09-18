@@ -1,13 +1,14 @@
 """VoltVision motor helpers: premium-independent simulation + pricing connector.
 
-Layout (assumptions in JSON, calculations in notebooks, system connects):
+Layout (assumptions in JSON, premium math in method modules, system connects):
   schema.py       COLS, PREM_<regime> naming rule, structural checks
   assumptions.py  base_template.json + scenario patches + seeds.json
-  simulate.py     gen / claim_lambda / loading / simulate / simulate_book
+  simulate.py     gen / claim_lambda / loading / settle_claims / simulate / simulate_book
+  methods/        pricing methods (tariff.py, glm.py, telem.py) — each owns its math
   pricing.py      BLACK BOX connector: Card, registry, quote / price_many,
                   resolve_cards, reporting helpers
-  ml.py           shared helpers for ML pricing methods (fit/severity/encode)
-  loader.py       replays 02x CALC cells so every caller quotes identical methods
+  ml.py           shared helpers for ML pricing methods (fit/severity/training_history)
+  loader.py       imports every method module so callers quote identical methods
   io.py           shared/results read/write: combined books + manifest
   runner.py       the scenario x seed loop (used by run_scenarios.py)
 """

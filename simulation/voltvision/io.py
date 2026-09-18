@@ -63,6 +63,19 @@ def load_result(scenario, seed):
     return _read(result_stem(scenario, seed))
 
 
+def pick_result(preferred=None):
+    """Choose a run to analyse: `preferred` = (scenario, seed) when it exists,
+    else the most recently saved run in the manifest. Raises FileNotFoundError
+    when no run has been produced yet."""
+    manifest = load_manifest()
+    if preferred and result_stem(*preferred) in manifest:
+        return tuple(preferred)
+    if manifest:
+        newest = max(manifest.values(), key=lambda e: e.get('saved_at', ''))
+        return newest['scenario'], int(newest['seed'])
+    raise FileNotFoundError('no results yet - run `python run_scenarios.py` first')
+
+
 def combine(book, priced):
     """Combine a simulated book and its priced books into ONE wide frame.
 

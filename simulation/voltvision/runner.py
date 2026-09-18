@@ -22,7 +22,7 @@ from .pricing import (
     ensure_core_methods, lr, price_many, reg_label, resolve_cards, retained_lr,
     rho,
 )
-from .simulate import simulate_book
+from .simulate import normalize_mix, simulate_book
 from . import io
 
 
@@ -46,15 +46,23 @@ def load_scenario_groups(grid):
 
 
 def resolve_vehicle(vehicle, cfg):
-    """Vehicle mix for one scenario: explicit dict wins; names map to the
-    standard books — MIX uses the template's vehicle_mix."""
-    if isinstance(vehicle, dict):
-        return dict(vehicle)
-    if vehicle == 'MIX':
-        return dict(cfg['vehicle_mix'])
-    if vehicle in ('ICE', 'EV'):
-        return {vehicle: 1.0}
-    raise ValueError(f"unknown vehicle {vehicle!r} — use ICE | EV | MIX or an explicit mix dict")
+    """Vehicle allocation for one scenario.
+
+    Explicit allocation dict wins (e.g. {"ICE": 0.0, "EV": 1.0} for an
+    EV-only book); absent -> the template's vehicle_mix. Zero weights are
+    dropped, so a fuel at 0% behaves exactly like an absent fuel.
+    """
+    if vehicle is None:
+        return normalize_mix(cfg['vehicle_mix'])
+    if not isinstance(vehicle, dict):
+        raise ValueError(
+            f'vehicle must be an allocation dict, e.g. {{"ICE": 0.0, "EV": 1.0}} '
+            f'or {{"ICE": 0.6, "EV": 0.4}} — got {vehicle!r}')
+    unknown = set(vehicle) - set(cfg['vehicle_mix'])
+    if unknown:
+        raise ValueError(f'vehicle has unknown fuel(s) {sorted(unknown)} — '
+                         f'known: {sorted(cfg["vehicle_mix"])}')
+    return normalize_mix(vehicle)
 
 
 def _metrics(priced, drop):
@@ -100,7 +108,7 @@ def run_scenarios(grid='scenarios', template=None, scenario_names=None,
         for scenario in selected:
             name = scenario['name']
             cfg = build_cfg(base, scenario)
-            vehicle = resolve_vehicle(scenario.get('vehicle', 'MIX'), cfg)
+            vehicle = resolve_vehicle(scenario.get('vehicle'), cfg)
             regimes = list(cfg['regimes'])
             cards = resolve_cards(cfg, scenario, regimes)
             scenario_seeds = [scenario['seed']] if 'seed' in scenario else seed_list

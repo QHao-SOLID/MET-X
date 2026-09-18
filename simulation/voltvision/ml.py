@@ -1,15 +1,17 @@
-"""Shared helpers for ML pricing methods (used by 02b/02c CALC cells).
+"""Shared helpers for ML pricing methods (glm.py / telem.py).
 
 These are method-side utilities — the connector (pricing.py) never calls them.
-Feature LISTS stay in each method notebook (the method owns its features).
+Feature LISTS stay in each method module (the method owns its features).
 """
+
+import json
 
 import numpy as np
 import pandas as pd
-import json
-
 from sklearn.linear_model import PoissonRegressor
-from .simulate import gen, simulate  # noqa: F401  (re-exported for method cells)
+
+from .assumptions import deep_merge
+from .simulate import simulate_book  # noqa: F401  (re-exported for method modules)
 
 
 def encode_features(d, feats):
@@ -45,6 +47,24 @@ def severity_by_row(book, sev, covsev):
     keys = list(zip(book['COVERAGE_TYPE'].values, book['VEHICLE_TYPE'].values))
     return np.array([sev.get(k, np.nan) if not np.isnan(sev.get(k, np.nan)) else covsev[k[0]]
                      for k in keys], float)
+
+
+def training_history(card, cfg, base_cfg):
+    """Training dataset for the ML methods: a book from the BASE template
+    world, one window earlier than the priced cohort.
+
+    Why: historical experience is fixed. If the training book were generated
+    under the scenario's stressed DGP, the model would pre-price a shock it
+    never lived through and stress tests would show fake stability at the cost
+    of inflated premiums. `train_dgp` adds explicit training-world overrides;
+    `train_book_seed = null` reverts to in-sample training (comparison only).
+    """
+    world = base_cfg if base_cfg is not None else cfg
+    train_cfg = deep_merge(world, card.train_dgp or {})
+    train_cfg['cohort_year'] = cfg['cohort_year'] - card.train_window_years
+    vehicle = card.train_vehicle or train_cfg['vehicle_mix']
+    return simulate_book(train_cfg, vehicle, card.train_book_seed,
+                         n_years=card.train_window_years, cache=True)
 
 
 def cfg_fingerprint(cfg):
