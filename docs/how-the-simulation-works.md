@@ -128,13 +128,17 @@ per-policy peril strings are joined with `/` (e.g. `AD/Theft`).
 | 4 | `_add_retention()` | `RENEWAL_PROB = base 0.82` + claim/clean delta (−0.25 / +0.05) + NCD bonuses (≥3: +0.15, ≥2: +0.08) + telematics bonus (≥80: up to +0.10, ≥60: +0.03) − behaviour penalty (0.05 × (BR − 1)), clipped [0.10, 0.95]; renewal draw |
 | 5 | `_update_ncd()` | claim → `NCD_YEARS = 0`; clean year → +1; `NCD_LEVEL` tier lookup |
 | 6 | record | the full year state is appended in `schema.COLS` order (lapsers included, so retention stays measurable) |
-| 7 | `_add_entrants()` | next year's new business: `count = n × entrant_frac × (1 + entrant_growth)^t`; fleet mix from `entrant_vehicle_mix()` (linear `vehicle_ramp`); entrant RNG seed = `seed + k + 1` |
+| 7 | `_add_entrants()` | next year's new business: `count = n × entrant_frac × (1 + entrant_growth)^t`; fleet mix from `entrant_vehicle_mix()` (linear `vehicle_ramp`) and coverage mix from `coverage_mix_at()` (linear `coverage_ramp`); entrant RNG seed = `seed + k + 1` |
 
-### `entrant_vehicle_mix(cfg, base_mix, year)`
+### `entrant_vehicle_mix(cfg, base_mix, year)` and `coverage_mix_at(cfg, year)`
 
-No `vehicle_ramp` → entrants keep the base mix. With a ramp, the EV share
-interpolates linearly from `from` to `to` across `cohort_year … cohort_year +
-n_years − 1`; ICE = 1 − EV. Existing policies never change fuel type.
+Shared ramp machinery: `ramp_progress(cfg, year)` gives the linear 0→1 position
+across `cohort_year … cohort_year + n_years − 1` and `blend_mix(start, end, t)`
+does the componentwise blend, so both ramps behave identically. No ramp →
+entrants keep the base mix (`vehicle_mix` / `coverage_pct`). With a ramp,
+`vehicle_ramp` moves the EV share `from`→`to` (ICE = 1 − EV) and
+`coverage_ramp` moves the coverage shares `from` (default `coverage_pct`)→`to`.
+Existing policies never change fuel type or coverage.
 
 ### `normalize_mix(mix)`
 

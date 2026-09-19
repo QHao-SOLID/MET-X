@@ -22,7 +22,7 @@ SEEDS_PATH = ROOT / 'seeds.json'
 TEMPLATE_KEYS = [
     # run controls
     'n', 'cohort_year', 'n_years', 'seed', 'regimes', 'vehicle_mix',
-    'vehicle_ramp', 'pricing', 'reporting',
+    'vehicle_ramp', 'coverage_ramp', 'pricing', 'reporting',
     # claim-experience levers
     'flood_event_prob', 'severity_inflation',
     'entrant_growth', 'sa_depreciation', 'sa_min',
@@ -147,6 +147,24 @@ def validate(cfg):
             if not isinstance(value, (int, float)) or not 0.0 <= value <= 1.0:
                 raise ValueError(f'vehicle_ramp.EV.{key} must be a share within [0, 1] — '
                                  f'got {value!r}')
+    # Coverage ramp (optional): full-mix linear blend, same logic as
+    # vehicle_ramp. `from` defaults to coverage_pct; keys must match it exactly.
+    coverage_ramp = cfg.get('coverage_ramp') or {}
+    if coverage_ramp:
+        if 'to' not in coverage_ramp:
+            raise ValueError('coverage_ramp requires a `to` mix')
+        for key in ('from', 'to'):
+            mix = coverage_ramp.get(key)
+            if mix is None:
+                continue
+            if set(mix) != set(cfg['coverage_pct']):
+                raise ValueError(
+                    f'coverage_ramp.{key} keys {sorted(mix)} must equal '
+                    f'coverage_pct keys {sorted(cfg["coverage_pct"])}')
+            for name, weight in mix.items():
+                if not isinstance(weight, (int, float)) or weight < 0:
+                    raise ValueError(f'coverage_ramp.{key}.{name} must be a share >= 0 — '
+                                     f'got {weight!r}')
     # Regime names are identifier-safe (used in PREM_ columns).
     from .schema import check_regime_name
     for name in cfg['regimes']:

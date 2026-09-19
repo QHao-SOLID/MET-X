@@ -61,6 +61,27 @@ def normalize_mix(mix):
     return clean
 
 
+def ramp_progress(cfg, year):
+    """Linear 0..1 progress across the simulation window.
+
+    Shared by `vehicle_ramp` and `coverage_ramp`: 0 at `cohort_year`, 1 at the
+    final window year; `n_years == 1` stays at 0 (the `from` mix).
+    """
+    start = int(cfg['cohort_year'])
+    span = int(cfg['n_years']) - 1
+    return 0.0 if span <= 0 else min(max((int(year) - start) / span, 0.0), 1.0)
+
+
+def blend_mix(start_mix, end_mix, t, order=None):
+    """Componentwise linear blend of two mass vectors.
+
+    Same logic for every ramp: `start + t x (end - start)`. Iteration order is
+    preserved (default: `start_mix` key order; `order` overrides) because the
+    categorical draw order is part of reproducibility.
+    """
+    return {k: start_mix[k] + t * (end_mix[k] - start_mix[k]) for k in (order or start_mix)}
+
+
 def entrant_vehicle_mix(cfg, base_mix, year):
     """Vehicle allocation for ONE entrant cohort (new business in `year`).
 
@@ -72,23 +93,39 @@ def entrant_vehicle_mix(cfg, base_mix, year):
     ramp = (cfg.get('vehicle_ramp') or {}).get('EV')
     if not ramp:
         return normalize_mix(base_mix)
-    start = int(cfg['cohort_year'])
-    span = int(cfg['n_years']) - 1
-    t = 0.0 if span <= 0 else min(max((int(year) - start) / span, 0.0), 1.0)
-    ev_share = ramp['from'] + t * (ramp['to'] - ramp['from'])
-    return normalize_mix({'ICE': 1 - ev_share, 'EV': ev_share})
+    t = ramp_progress(cfg, year)
+    return normalize_mix(blend_mix({'ICE': 1 - ramp['from'], 'EV': ramp['from']},
+                                   {'ICE': 1 - ramp['to'], 'EV': ramp['to']}, t))
+
+
+def coverage_mix_at(cfg, year):
+    """Coverage allocation for ONE cohort (inception or new business in `year`).
+
+    No `coverage_ramp` in cfg -> the template `coverage_pct` (current
+    behavior). With `coverage_ramp` the mix is interpolated linearly from
+    `from` (default `coverage_pct`) to `to` across the simulation window, using
+    the same linear ramp as `vehicle_ramp`. Iterates `coverage_pct` key order
+    so the categorical draw stream stays fixed.
+    """
+    ramp = cfg.get('coverage_ramp') or {}
+    if not ramp:
+        return cfg['coverage_pct']
+    start = ramp.get('from') or cfg['coverage_pct']
+    return blend_mix(start, ramp['to'], ramp_progress(cfg, year),
+                     order=list(cfg['coverage_pct']))
 
 
 # ---------------------------------------------------------------------------
 # Book generation, split into named steps (called in order by gen()).
 # ---------------------------------------------------------------------------
 
-def _draw_product_mix(cfg, vehicle_pct, rng, n):
+def _draw_product_mix(cfg, vehicle_pct, rng, n, coverage_mix=None):
     """Coverage, fuel type and region — three independent categorical draws."""
     df = pd.DataFrame(index=range(n))
     vehicle_mix = normalize_mix(vehicle_pct)
-    df['COVERAGE_TYPE'] = rng.choice(list(cfg['coverage_pct']),
-                                     p=normalize_weights(cfg['coverage_pct'].values()), size=n)
+    mix = cfg['coverage_pct'] if coverage_mix is None else coverage_mix
+    df['COVERAGE_TYPE'] = rng.choice(list(mix),
+                                     p=normalize_weights(mix.values()), size=n)
     df['VEHICLE_TYPE'] = rng.choice(list(vehicle_mix),
                                     p=normalize_weights(vehicle_mix.values()), size=n)
     df['REGION'] = rng.choice(list(cfg['region_pct']),
@@ -191,17 +228,18 @@ def _make_policy_ids(df, year, prefix, n):
     df['POLID'] = [f"{prefix}{year}-{i + 1:06d}" for i in range(n)]
 
 
-def gen(cfg, vehicle_pct, seed, year=None, prefix='INIT', n=None):
+def gen(cfg, vehicle_pct, seed, year=None, prefix='INIT', n=None, coverage_mix=None):
     """Build one book of n policies from cfg — attributes only.
 
     No claims, no premium, no SIM_YEAR yet; steps run in the legacy order so
-    results stay reproducible against previous versions.
+    results stay reproducible against previous versions. `coverage_mix`
+    overrides the coverage draw for this cohort (ramps); None = template mix.
     """
     n = int(n or cfg['n'])
     rng = np.random.default_rng(seed)
     yr = year or cfg['cohort_year']
 
-    df = _draw_product_mix(cfg, vehicle_pct, rng, n)
+    df = _draw_product_mix(cfg, vehicle_pct, rng, n, coverage_mix=coverage_mix)
     _draw_sum_assured(df, cfg, rng, n)
     _draw_engine_bands(df, cfg, rng, n)
     _draw_driver_profile(df, cfg, rng, n)
@@ -451,7 +489,8 @@ def _add_entrants(book, cfg, vehicle_pct, seed, year, n_years):
     count = int(cfg['n'] * cfg['entrant_frac'] * (1 + growth) ** (year - cfg['cohort_year']))
     mix = entrant_vehicle_mix(cfg, vehicle_pct, year)
     entrants = gen(cfg, mix, seed + (year - cfg['cohort_year']),
-                   year=year, prefix='ENT', n=count)
+                   year=year, prefix='ENT', n=count,
+                   coverage_mix=coverage_mix_at(cfg, year))
     return pd.concat([book[book['RENEWED']], entrants], ignore_index=True)
 
 
@@ -537,8 +576,9 @@ def simulate_book(cfg, vehicle, seed, n_years=None, cache=False):
         key = (seed, years, json.dumps(vehicle, sort_keys=True), _engine_fingerprint(cfg))
         if key in _BOOK_CACHE:
             return _BOOK_CACHE[key]
-    book = simulate(gen(cfg, vehicle, seed), cfg, vehicle, seed=seed,
-                    n_years=years, verbose=False)
+    book = simulate(gen(cfg, vehicle, seed,
+                        coverage_mix=coverage_mix_at(cfg, cfg['cohort_year'])),
+                    cfg, vehicle, seed=seed, n_years=years, verbose=False)
     if cache:
         _BOOK_CACHE[key] = book
         while len(_BOOK_CACHE) > _BOOK_CACHE_MAX:

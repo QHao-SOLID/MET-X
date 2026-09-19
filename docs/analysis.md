@@ -7,8 +7,8 @@ from the `PREM_*` columns present — no hardcoded regime trio. Loader default:
 | Section | Content |
 |---|---|
 | §1 Executive summary | scorecard per regime (LR, retained LR, premium-risk alignment, avg premium) |
-| §2 Portfolio & cohort | inception mix, age/SA distributions, cohort evolution, NCD/premium trends, sample policy trails, heatmaps, age-band risk |
-| §3 Claims profile | frequency, severity, peril mix, LR by coverage |
+| §2 Portfolio & cohort | inception mix, age/SA distributions, cohort evolution (incl. coverage mix by year — drifts only under `coverage_ramp`), NCD/premium trends, sample policy trails, heatmaps, age-band risk |
+| §3 Claims profile | frequency, severity, peril mix, LR by coverage (one column + grouped bars per regime) |
 | §4 Validation | model sanity checks (PASS/FAIL) + distribution tests (KS, gamma fits, Poisson dispersion) |
 | §5 Pricing comparison | N-regime scorecard + effectiveness checks (risk signals, best regime, alignment) |
 | §5b Cross-scenario table | tariff on ICE/MIX/EV, ML on EV — TPO LR, avg LR, premium bounds, avg premium |

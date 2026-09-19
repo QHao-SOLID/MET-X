@@ -14,7 +14,7 @@ pointer to `simulation/TEMPLATE.md`.
 
 | Group | Keys |
 |---|---|
-| Run controls | `n`, `cohort_year`, `n_years`, `seed`, `regimes`, `vehicle_mix`, `vehicle_ramp`, `flood_event_prob`, `severity_inflation`, `entrant_growth`, `sa_depreciation`, `sa_min` |
+| Run controls | `n`, `cohort_year`, `n_years`, `seed`, `regimes`, `vehicle_mix`, `vehicle_ramp`, `coverage_ramp`, `flood_event_prob`, `severity_inflation`, `entrant_growth`, `sa_depreciation`, `sa_min` |
 | Book composition | `coverage_pct`, `region_pct`, `generation_pct`, `age_bands`, `gender_pct`, `car_age_median`, `car_age_sigma`, `sa_stats`, `engine_bands`, `engine_weights`, `entrant_frac` |
 | NCD | `ncd_table`, `ncd_entry` |
 | Frequency | `claim_frequency_base`, `frequency`, `risk_flags` |

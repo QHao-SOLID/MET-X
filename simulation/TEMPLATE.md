@@ -20,6 +20,7 @@ rate cards; `pricing` below is only an optional override layer.
 | `regimes` | list of names | Pricing methods to run (names must exist in the registry). |
 | `vehicle_mix` | share dict | Default ICE/EV split for scenarios without their own `vehicle`. Order (ICE, EV) is part of the RNG draw — keep it. |
 | `vehicle_ramp` | `{"EV": {"from": x, "to": y}}` | Foreseeable mix shift: entrant EV share interpolates linearly from `from` to `to` across the simulation window (`cohort_year` … `cohort_year + n_years − 1`); ICE = 1 − EV. Entrants only — existing policies keep their fuel type. `{}` = no ramp. |
+| `coverage_ramp` | `{"to": share dict, "from": share dict?}` | Same linear ramp for the coverage mix: entrant coverage shares move from `from` (default `coverage_pct`) to `to` across the window; sums to 1 by construction. Entrants only — existing policies keep their coverage. `{}` = no ramp. |
 | `flood_event_prob` | P(event year) per region | A flood loading only applies in years a region draws a flood event; the `FLOOD_RISK` flag marks exposure (still used for pricing). |
 | `severity_inflation` | fraction/yr | Claim payouts compound by `(1+r)^(SIM_YEAR − cohort_year)` (repair/medical inflation). |
 | `entrant_growth` | fraction/yr | New-business volume compounds per year: `n × entrant_frac × (1+g)^t`. |

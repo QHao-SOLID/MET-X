@@ -67,7 +67,8 @@ The project lives in **`simulation/`** — run everything from there:
 - `scenarios/*.json` — flat scenario patches; the runner reads every file. The
   user's set is fluid — don't assume specific files beyond the ones on disk.
   Current conventions: `matrix.json` (ICE/EV/MIX, feeds the §5b matrix table in
-  `analysis.ipynb` — keep those names), `base`, `hard_combo`. Earlier sets
+  `analysis.ipynb` — keep those names), `base`, `hard_combo`,
+  `coverage_shift` (TPO-ward coverage ramp demo). Earlier sets
   (`mix_coverage`) live in git history.
 - `run_scenarios.py` — CLI loop (`--quick --scenarios --seeds --csv --excel --grid`)
 - `pricing_desk.ipynb` — desk: cards, quote N regimes, what-if, add-a-method demo
@@ -104,6 +105,7 @@ The project lives in **`simulation/`** — run everything from there:
 - Manifest entry per run: `{scenario, seed, file, saved_at, cfg, cards, metrics{regime:{lr, retained_lr, rho, avg_prem}}}`
 - Scenario reserved keys: `name`, `vehicle` (allocation dict only — `{"ICE":0.0,"EV":1.0}` for EV-only, `{"ICE":0.6,"EV":0.4}` for mixed; zero weights dropped), `seed`, `pricing`
 - `vehicle_ramp` (template/scenario key, optional): `{"EV": {"from": x, "to": y}}` — entrant EV share moves linearly across the simulation window (`cohort_year … cohort_year+n_years−1`), ICE = 1 − EV, entrants only; `{}` = off. Existing policies never change fuel type.
+- `coverage_ramp` (template/scenario key, optional): `{"to": {coverage: share}, "from": {...}?}` — same linear ramp for the coverage mix (shared `ramp_progress` + `blend_mix` in `simulate.py`); `from` defaults to `coverage_pct`, keys must match it; entrants only; `{}` = off. Demo: `scenarios/coverage_shift.json` (TPO 15%→35%).
 - Settlement: `severity.specs.<peril>` carries `payout` (partial/total/mixed), `total_loss_prob`, `excess`/`young_excess`; `severity_inflation`, `sa_depreciation`/`sa_min`, `entrant_growth`, `flood_event_prob` are top-level levers. No EV severity factor: EV cost differences flow through higher sums assured (total-loss and SA-linked rules). §10 in `analysis.ipynb` scores a run against `benchmarks.json` (PASS/FAIL).
 - Filenames always seed-suffixed: `<scenario>_s<seed>.pkl`. Scenario names may contain dots — build file paths by string concatenation, never `Path.with_suffix`
 

@@ -46,6 +46,21 @@ linearly across the simulation window; existing policies never change fuel type:
 
 `n_years == 1` uses `from`. `{}` = off.
 
+`coverage_ramp` is the same linear ramp for the product mix — new business
+drifts from the template `coverage_pct` (or an explicit `from`) to `to` across
+the window, while existing policies keep their coverage:
+
+```json
+{"name": "coverage_shift",
+ "coverage_ramp": {"to": {"Comprehensive": 0.45, "TPFT": 0.20, "TPO": 0.35}}}
+```
+
+Both ramps share one interpolation function (`ramp_progress` + `blend_mix` in
+`simulate.py`), so they behave identically. TPO-ward drift pressures the tariff
+loss ratio upward (TPO is underpriced — see [Analysis](analysis.md)), though the
+TPO book is noisy, so the effect varies by seed; `from` must use exactly the
+`coverage_pct` keys.
+
 ## Groups in this repo (examples — your folder may differ)
 
 | File | Scenarios |
