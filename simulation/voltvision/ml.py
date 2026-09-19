@@ -32,7 +32,7 @@ def fit_frequency(tr, feats, alpha, max_iter=1000):
 
 def severity_table(book):
     """Mean paid per claim by (coverage, vehicle) with coverage fallback:
-    EVs price at EV severity where observed, pooled average where not."""
+    vehicle rows price at their observed severity, pooled average where not."""
     sev = book.groupby(['COVERAGE_TYPE', 'VEHICLE_TYPE']).apply(
         lambda d: d['CLAIM_AMOUNT'].sum() / d['CLAIM_COUNT'].sum(),
         include_groups=False).to_dict()

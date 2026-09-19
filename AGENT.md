@@ -44,6 +44,13 @@ You are an actuarial simulation assistant for this project.
    settlement for Theft/Fire/AD, excesses (400 / young 1,500), flood as event
    years, severity inflation, SA depreciation, entrant growth. The legacy
    pre-realism baseline lives in git history only — do not reintroduce modes.
+8. **NCD is a statutory post-model discount, never a rating feature.** GLM and
+   telematics price pure premium (`freq × severity ÷ target_lr`) and then apply
+   `(1 − NCD_LEVEL)` like the tariff; TPO policies are exempt. `target_lr`
+   (default 0.55) is the pure-premium loss-ratio anchor — because NCD and risk
+   flags apply afterwards, the achieved portfolio LR runs higher than the
+   anchor. NCD stays out of training too (`ml.training_history` books carry it
+   as a column, but no method may learn it).
 
 ## File structure (monorepo)
 
@@ -56,7 +63,7 @@ The project lives in **`simulation/`** — run everything from there:
 - `TEMPLATE.md` — every key: unit + effect of raising it; scenario reserved keys
 - `benchmarks.json` — sourced industry targets (PIAM 2025, VTAREC, NCD/excess sources) for the §10 realism checks; each target carries `source_ids`
 - `sources/benchmarks_sources.json` + `SOURCES.md` — the citation ledger: URLs, publishers, key values, exact search queries, retrieval method/date (Parallel Search, search-derived — extract before external quoting)
-- `seeds.json` — `{"seeds": [42]}`; every scenario runs once per seed unless it patches `seed`
+- `seeds.json` — `{"seeds": [42, 67, 69]}`; every scenario runs once per seed unless it patches `seed`
 - `scenarios/*.json` — flat scenario patches; the runner reads every file. The
   user's set is fluid — don't assume specific files beyond the ones on disk.
   Current conventions: `matrix.json` (ICE/EV/MIX, feeds the §5b matrix table in
@@ -67,7 +74,11 @@ The project lives in **`simulation/`** — run everything from there:
 - `analysis.ipynb` — analysis reading `shared/results/` only:
   §1 exec summary, §2 cohort, §3 claims, §4 validation, §5 pricing comparison,
   §5b cross-scenario review table, §6 telem tiers, §7 EV vs ICE, §8 seed spread
-  (from manifest), §10 realism vs benchmarks
+  (from manifest), §10 realism vs benchmarks, §11 SHAP explainability
+  (GLM & telem; needs `pip install shap`, refits via `methods.*.train_model` —
+  return signature `(model, sev, covsev, training_rows)`; anatomy includes the
+  post-model NCD discount), §12 premium evolution (portfolio mean per seed band
+  + cohort-matched smooth path, all regimes)
 - `voltvision/`:
   - `schema.py` — `COLS`, `PREM_<regime>` naming, regime-name validation
   - `assumptions.py` — `load_template`, `load_seeds`, `build_cfg`, `validate`, `describe_patch`
@@ -93,7 +104,7 @@ The project lives in **`simulation/`** — run everything from there:
 - Manifest entry per run: `{scenario, seed, file, saved_at, cfg, cards, metrics{regime:{lr, retained_lr, rho, avg_prem}}}`
 - Scenario reserved keys: `name`, `vehicle` (allocation dict only — `{"ICE":0.0,"EV":1.0}` for EV-only, `{"ICE":0.6,"EV":0.4}` for mixed; zero weights dropped), `seed`, `pricing`
 - `vehicle_ramp` (template/scenario key, optional): `{"EV": {"from": x, "to": y}}` — entrant EV share moves linearly across the simulation window (`cohort_year … cohort_year+n_years−1`), ICE = 1 − EV, entrants only; `{}` = off. Existing policies never change fuel type.
-- Settlement: `severity.specs.<peril>` carries `payout` (partial/total/mixed), `total_loss_prob`, `excess`/`young_excess`; `severity_inflation`, `sa_depreciation`/`sa_min`, `entrant_growth`, `flood_event_prob` are top-level levers. §10 in `analysis.ipynb` scores a run against `benchmarks.json` (PASS/FAIL).
+- Settlement: `severity.specs.<peril>` carries `payout` (partial/total/mixed), `total_loss_prob`, `excess`/`young_excess`; `severity_inflation`, `sa_depreciation`/`sa_min`, `entrant_growth`, `flood_event_prob` are top-level levers. No EV severity factor: EV cost differences flow through higher sums assured (total-loss and SA-linked rules). §10 in `analysis.ipynb` scores a run against `benchmarks.json` (PASS/FAIL).
 - Filenames always seed-suffixed: `<scenario>_s<seed>.pkl`. Scenario names may contain dots — build file paths by string concatenation, never `Path.with_suffix`
 
 ## Commands
@@ -102,29 +113,36 @@ Run from `simulation/` (or prefix paths, e.g. `python simulation/run_scenarios.p
 
 - Full sweep: `python run_scenarios.py` (all groups × `seeds.json`)
 - Smoke: `python run_scenarios.py --quick`
-- Subset: `python run_scenarios.py --scenarios mix_60_40 --seeds 0`
+- Subset: `python run_scenarios.py --scenarios MIX --seeds 42`
 - Export: `python run_scenarios.py --excel MIX_s42` → `VoltVision_Motor_Simulation_MIX_s42.xlsx`
 - Notebooks: `pricing_desk.ipynb` (desk) then `analysis.ipynb` (deep-dive)
-- Install deps: `pip install numpy pandas matplotlib seaborn scipy scikit-learn openpyxl`
+- Install deps: `pip install numpy pandas matplotlib seaborn scipy scikit-learn openpyxl shap`
+  (`shap` only needed for `analysis.ipynb` §11)
 - Docs (repo root): `mkdocs serve` / `mkdocs build --strict` — pages in `docs/`,
   snippets embed `simulation/TEMPLATE.md` and `simulation/SOURCES.md`
 
 ## Parity gate
 
-Full-size, seed 42, standard books (unified realistic system) must reproduce:
+Full-size, seed 42, standard books (unified realistic system, NCD post-model,
+GLM/telem `target_lr = 0.55`) must reproduce:
 
-- ICE: Tariff 83.38 / GLM 64.46 / telem 64.87
-- EV:  Tariff 59.72 / GLM 54.72 / telem 55.06
-- MIX (== `base`): Tariff 80.08 / GLM 65.06 / telem 65.16
+- ICE: Tariff 83.38 / GLM 63.84 / telem 64.31
+- EV:  Tariff 59.72 / GLM 58.39 / telem 58.84
+- MIX (== `base`): Tariff 80.08 / GLM 69.57 / telem 69.76
+- `base` seeds 67/69 (LR stability): Tariff 79.52/80.31, GLM 67.87/69.43,
+  telem 67.99/69.54
 
 Note: scenarios that patch ENGINE assumptions (frequency, severity, coverage
 mix) intentionally produce different ML numbers since the training-world fix
 (rule 4) — only the unpatched books are the gate.
-Engine-level checks (fast): quick MIX (n=1000, 2y, seed 20260916) rows **2014**,
-`pd.util.hash_pandas_object(book).sum() == 1878879944891936264`; full MIX rows
-**54118**, hash `12995343068305400064`; training book (seed 42, cohort−5, 5y)
-rows **54006**, hash `5278185049816064045`.
-Spot-check: `mix_60_40` seed 42 = Tariff 72.87 / GLM 63.14 / telem 63.37.
+
+Engine-level checks (fast, re-pinned after the NCD/EV prune — old hash values
+were stale; book rows were always stable):
+- quick (n=1000, 2y, seed 20260916, 96/4 mix) rows **2014**,
+  `pd.util.hash_pandas_object(simulate_book(cfg, cfg['vehicle_mix'], 20260916, n_years=2)).sum() == 12865515199911164816`
+- full template (n=10000, 5y, seed 20260916, 96/4 mix) rows **54118**,
+  hash `6300701653090821582`
+- training book (seed 42, cohort−5, 5y) rows **54006**, hash `6610967591617124192`
 
 ## Practices
 

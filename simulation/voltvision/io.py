@@ -25,7 +25,7 @@ MANIFEST = RESULTS / 'manifest.json'
 
 
 def result_stem(scenario, seed):
-    """File stem for one run — always seed-suffixed, e.g. 'mix_60_40_s0'."""
+    """File stem for one run — always seed-suffixed, e.g. 'MIX_s42'."""
     return f'{scenario}_s{int(seed)}'
 
 

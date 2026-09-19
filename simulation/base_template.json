@@ -121,20 +121,20 @@
  "severity": {
   "perils": ["AD", "Windscreen", "Theft", "Fire", "TPPD", "TPBI"],
   "specs": {
-   "TPBI": {"shape": 0.35, "scale": 70000, "cap": null, "ev_loading": false,
+   "TPBI": {"shape": 0.35, "scale": 70000, "cap": null,
             "payout": "partial", "excess": 0},
-   "TPPD": {"shape": 0.55, "scale": 9000, "cap": 3000000, "ev_loading": false,
+   "TPPD": {"shape": 0.55, "scale": 9000, "cap": 3000000,
             "payout": "partial", "excess": 0},
-   "Windscreen": {"shape": 2.00, "scale": 700, "cap": 15000, "ev_loading": false,
+   "Windscreen": {"shape": 2.00, "scale": 700, "cap": 15000,
                   "payout": "partial", "excess": 0},
    "Theft": {"shape": 1.10, "scale": {"sa_fraction": 0.20, "min": 8000, "max": 20000},
-             "cap": "sum_assured", "ev_loading": true,
+             "cap": "sum_assured",
              "payout": "total", "excess": 400},
    "Fire": {"shape": 0.90, "scale": 12000,
-            "cap": "sum_assured", "ev_loading": true,
+            "cap": "sum_assured",
             "payout": "mixed", "total_loss_prob": 0.60, "excess": 400},
    "AD": {"shape": 0.60, "scale": 5500,
-          "cap": "sum_assured", "ev_loading": true,
+          "cap": "sum_assured",
           "payout": "mixed", "total_loss_prob": 0.08, "excess": 400,
           "young_excess": 1500}
   }
@@ -145,7 +145,6 @@
   "TPO": {"TPPD": 0.78, "TPBI": 0.22},
   "TPFT": {"TPPD": 0.80, "TPBI": 0.15, "Theft": 0.04, "Fire": 0.01}
  },
- "ev_severity_factor": 1.30,
  "severity_multiplier": 1.00,
 
  "telematics": {

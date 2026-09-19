@@ -82,7 +82,7 @@ driver band (1.20 / 1.05 / 1.00 / 1.05) × (1 + 0.03 × min(CAR_AGE, 10)).
 One uniform vector vs the cumulative peril mix — the claim's peril per row.
 `peril_dist` maps each coverage to its mix; `severity.perils` fixes draw order.
 
-### `severity_params(perils, sum_assured, cfg, ev_multiplier)`
+### `severity_params(perils, sum_assured, cfg)`
 
 Builds per-claim Gamma **shape / scale / cap** arrays from
 `severity.specs.<peril>`:
@@ -92,7 +92,6 @@ Builds per-claim Gamma **shape / scale / cap** arrays from
 | `shape` | Gamma shape (lower = heavier tail) |
 | `scale` | RM number **or** `{"sa_fraction", "min", "max"}` = `clip(SA × fraction, min, max)` |
 | `cap` | `null` (uncapped), RM number, or `"sum_assured"` |
-| `ev_loading` | whether `ev_severity_factor` multiplies this peril's scale |
 | `severity_multiplier` | global multiplier on every peril's scale |
 
 ### `settle_claims(claim_amounts, perils, sum_assured, young, cfg, rng, year)`

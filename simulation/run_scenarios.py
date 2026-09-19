@@ -3,11 +3,11 @@
 Examples:
   python run_scenarios.py                     # all scenarios x seeds.json, full size
   python run_scenarios.py --quick             # smoke: n=1000, 2 years
-  python run_scenarios.py --scenarios mix_60_40,tpo_heavy
-  python run_scenarios.py --seeds 0,4         # override seeds.json
+  python run_scenarios.py --scenarios MIX,base
+  python run_scenarios.py --seeds 42,67,69    # override seeds.json
   python run_scenarios.py --csv               # also write CSV beside each pkl
   python run_scenarios.py --grid scenarios/02_severity.json
-  python run_scenarios.py --excel mix_60_40_s0   # xlsx from an existing result
+  python run_scenarios.py --excel MIX_s42     # xlsx from an existing result
 
 Results land in shared/results/<scenario>_s<seed>.pkl (+ manifest.json).
 """
@@ -35,7 +35,7 @@ def parse_args(argv=None):
     ap.add_argument('--quick', action='store_true', help='smoke: n=1000, 2 years')
     ap.add_argument('--csv', action='store_true', help='also write CSV per result')
     ap.add_argument('--excel', default='',
-                    help='export one result stem to xlsx, e.g. mix_60_40_s0 (skips the loop)')
+                    help='export one result stem to xlsx, e.g. MIX_s42 (skips the loop)')
     return ap.parse_args(argv)
 
 

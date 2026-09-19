@@ -19,12 +19,12 @@ Synthetic Malaysian motor book, built as two deliberately separated systems:
 ```bash
 python run_scenarios.py                 # full sweep -> shared/results/
 python run_scenarios.py --quick         # smoke run
-python run_scenarios.py --scenarios mix_60_40
+python run_scenarios.py --scenarios MIX
 python run_scenarios.py --excel MIX_s42 # xlsx from an existing result
 ```
 
 Then: `pricing_desk.ipynb` (live quoting) or `analysis.ipynb` (deep-dive +
-§10 realism vs `benchmarks.json`).
+§10 realism vs `benchmarks.json`, §12 premium evolution).
 
 ## Layout
 
@@ -45,9 +45,12 @@ Then: `pricing_desk.ipynb` (live quoting) or `analysis.ipynb` (deep-dive +
 
 | Book | Tariff | GLM | GLM+Telematics |
 |---|---|---|---|
-| ICE | 83.38% | 64.46% | 64.87% |
-| EV | 59.72% | 54.72% | 55.06% |
-| MIX / base | 80.08% | 65.06% | 65.16% |
+| ICE | 83.38% | 63.84% | 64.31% |
+| EV | 59.72% | 58.39% | 58.84% |
+| MIX / base | 80.08% | 69.57% | 69.76% |
 
-Engine hashes and the exact check procedure live in `../docs/development.md`
-and `../AGENT.md`. The default book passes all 6/6 §10 industry realism checks.
+NCD is applied after the model as a statutory discount (TPO exempt), so the
+ML premiums are pure-premium / `target_lr` figures shaded by NCD — never a
+learned rating factor. Engine hashes and the exact check procedure live in
+`../docs/development.md` and `../AGENT.md`. The default book passes all 6/6
+§10 industry realism checks.

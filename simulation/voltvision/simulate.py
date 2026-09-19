@@ -276,13 +276,12 @@ def draw_perils(coverage, count, rng, cfg):
     return np.array(perils)[idx]
 
 
-def severity_params(perils, sum_assured, cfg, ev_multiplier):
+def severity_params(perils, sum_assured, cfg):
     """Per-claim Gamma shape / scale / cap arrays from the template specs.
 
     scale: absolute RM, or clip(SUM_ASSURED × sa_fraction, min, max).
     cap:   null (uncapped) | RM number | 'sum_assured'.
-    The global severity multiplier applies to every peril; the EV multiplier
-    only where the spec says ev_loading.
+    The global severity multiplier applies to every peril.
     """
     specs = cfg['severity']['specs']
     sev_mult = cfg['severity_multiplier']
@@ -296,8 +295,6 @@ def severity_params(perils, sum_assured, cfg, ev_multiplier):
         if isinstance(spec['scale'], dict):
             rule = spec['scale']
             base = np.clip(sum_assured[mask] * rule['sa_fraction'], rule['min'], rule['max'])
-            if spec['ev_loading']:
-                base = base * ev_multiplier[mask]
             scale[mask] = base * sev_mult
         else:
             scale[mask] = spec['scale'] * sev_mult
@@ -401,10 +398,8 @@ def _add_severity(book, cfg, rng):
     coverage = book['COVERAGE_TYPE'].values[claim_index]
     sum_assured = book['SUM_ASSURED'].values[claim_index]
     perils = draw_perils(coverage, len(claim_index), rng, cfg)
-    ev_multiplier = np.where(book['VEHICLE_TYPE'].values[claim_index] == 'EV',
-                             cfg['ev_severity_factor'], 1.0)
 
-    shape, scale, cap = severity_params(perils, sum_assured, cfg, ev_multiplier)
+    shape, scale, cap = severity_params(perils, sum_assured, cfg)
     claim_amounts = np.minimum(rng.gamma(shape, scale), cap)
     young = book['DRIVER_AGE_CAT'].values[claim_index] == 'Young Adults'
     claim_amounts = settle_claims(claim_amounts, perils, sum_assured, young, cfg, rng,

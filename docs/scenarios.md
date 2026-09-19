@@ -8,10 +8,10 @@ inherited from the base.
 
 ```json
 {
-  "name": "mix_60_40",
+  "name": "demo_scenario",
   "vehicle": {"ICE": 0.6, "EV": 0.4},
   "coverage_pct": {"Comprehensive": 0.45, "TPFT": 0.20, "TPO": 0.35},
-  "pricing": {"glm": {"expense_loading": 1.8}},
+  "pricing": {"glm": {"target_lr": 0.60}},
   "seed": 7
 }
 ```
@@ -29,7 +29,7 @@ inherited from the base.
 `simulation/seeds.json` holds the default list:
 
 ```json
-{"seeds": [42]}
+{"seeds": [42, 67, 69]}
 ```
 
 Every scenario runs once per seed unless it patches `seed`. Result files are

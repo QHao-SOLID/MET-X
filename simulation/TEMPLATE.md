@@ -98,9 +98,7 @@ rate cards; `pricing` below is only an optional override layer.
 | `severity.specs.<peril>.total_loss_prob` | share | Probability a claim is settled as a total loss (mixed payout only). |
 | `severity.specs.<peril>.excess` | RM | Deductible subtracted from the payout (partial at/below excess → not reported). |
 | `severity.specs.<peril>.young_excess` | RM | Higher excess for Young Adults (overrides `excess`). |
-| `severity.specs.<peril>.ev_loading` | bool | Whether `ev_severity_factor` multiplies this peril's scale. |
 | `peril_dist` | shares per coverage | Peril mix used when drawing a claim's peril; keys must equal `severity.perils`. |
-| `ev_severity_factor` | multiplier | EV repair loading (own-damage perils only, where `ev_loading` is true). |
 | `severity_multiplier` | multiplier | Global claim-cost shock on every peril (1.20 = +20%). |
 
 ## Telematics generator

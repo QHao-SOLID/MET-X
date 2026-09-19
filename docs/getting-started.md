@@ -4,7 +4,8 @@
 
 ```bash
 pip install numpy pandas matplotlib seaborn scipy scikit-learn openpyxl
-pip install mkdocs-material        # docs only
+pip install shap                                                   # analysis §11 only
+pip install mkdocs-material                                        # docs only
 ```
 
 Python 3.10+. No other setup — assumptions and scenarios are JSON.
@@ -41,7 +42,7 @@ raw = io.sim_book(combined)             # attributes + claims
 books = io.books_from_result(combined)  # {regime: book with FINAL_PREMIUM_SST}
 ```
 
-Or open `analysis.ipynb` — the loader cell picks `('base', 42)` if present,
+Or open `analysis.ipynb` — the loader cell picks `('base', 67)` if present,
 otherwise the newest run in the manifest, and every section loops whatever
 `PREM_*` columns the file contains.
 

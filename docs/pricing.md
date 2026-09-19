@@ -32,7 +32,7 @@ Each module declares its parameters:
 
 ```python
 CARD = {
-  'expense_loading': {'default': 1.5, 'unit': 'multiplier', 'note': 'pure-premium loading'},
+  'target_lr': {'default': 0.55, 'unit': 'loss-ratio anchor', 'note': 'pure premium / target_lr'},
   ...
 }
 register_pricer('glm', price_glm, card=CARD, info={'label': 'GLM', 'color': '#f59e0b'})

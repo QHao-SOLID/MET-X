@@ -37,7 +37,7 @@ TEMPLATE_KEYS = [
     # loadings / aging
     'loading', 'aging',
     # severity
-    'severity', 'peril_dist', 'ev_severity_factor', 'severity_multiplier',
+    'severity', 'peril_dist', 'severity_multiplier',
     # telematics & retention
     'telematics', 'behavior_risk', 'retention',
 ]

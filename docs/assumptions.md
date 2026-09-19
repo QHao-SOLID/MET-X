@@ -19,7 +19,7 @@ pointer to `simulation/TEMPLATE.md`.
 | NCD | `ncd_table`, `ncd_entry` |
 | Frequency | `claim_frequency_base`, `frequency`, `risk_flags` |
 | Loadings / aging | `loading`, `aging` |
-| Severity | `severity` (peril order + per-peril Gamma specs), `peril_dist`, `ev_severity_factor`, `severity_multiplier` |
+| Severity | `severity` (peril order + per-peril Gamma specs), `peril_dist`, `severity_multiplier` |
 | Telematics | `telematics`, `behavior_risk` |
 | Retention | `retention` |
 | Pricing overrides | `pricing` (opaque to the system — merged into each method's card) |

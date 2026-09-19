@@ -17,7 +17,7 @@ the payout rules and the realism scoreboard.
 | Inflation | payouts compound by `(1 + severity_inflation)^(SIM_YEAR − cohort_year)` | `severity_inflation` |
 | SA depreciation | sum assured marked down at renewal (market value, floor `sa_min`) | `sa_depreciation`, `sa_min` |
 | Entrant growth | `n × entrant_frac × (1 + entrant_growth)^t` | `entrant_frac`, `entrant_growth` |
-| EV | higher repair factor (PIAM: EV repair costlier) | `ev_severity_factor` |
+| EV | no explicit factor — higher sums assured flow through the total-loss and SA-linked rules | — |
 
 ## Realism checks (`analysis.ipynb` §10)
 
