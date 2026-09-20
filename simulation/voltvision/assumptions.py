@@ -43,7 +43,7 @@ TEMPLATE_KEYS = [
 ]
 
 # Keys the runner consumes directly; never merged into the simulation cfg.
-SCENARIO_RESERVED = ('name', 'vehicle')
+SCENARIO_RESERVED = ('name', 'vehicle', 'enabled')
 
 
 def deep_merge(base, patch):

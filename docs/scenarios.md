@@ -19,6 +19,7 @@ inherited from the base.
 | Key | Meaning |
 |---|---|
 | `name` | scenario name — used in file names and the manifest |
+| `enabled` | `false` skips the scenario (default true) — toggle to run a subset without deleting or passing `--scenarios` |
 | `vehicle` | allocation dict only: `{"ICE": 0.0, "EV": 1.0}` (EV-only) or `{"ICE": 0.6, "EV": 0.4}` (mixed). Absent → template `vehicle_ramp.from`. Zero weights are dropped |
 | `seed` | run this scenario once with this seed (overrides `seeds.json`) |
 | `pricing` | `{regime: {param: value}}` rate-card overrides; unknown params are rejected by the method's declared card |
