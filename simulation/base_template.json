@@ -4,8 +4,7 @@
  "n_years": 5,
  "seed": 20260916,
  "regimes": ["tariff", "glm", "telem"],
- "vehicle_mix": {"ICE": 0.96, "EV": 0.04},
- "vehicle_ramp": {},
+ "vehicle_ramp": {"from": {"ICE": 0.96, "EV": 0.04}},
 
  "flood_event_prob": {
   "Peninsular Malaysia": 0.25,
@@ -19,10 +18,12 @@
  "sa_depreciation": 0.10,
  "sa_min": 5000,
 
- "coverage_pct": {
-  "Comprehensive": 0.65,
-  "TPFT": 0.20,
-  "TPO": 0.15
+ "coverage_ramp": {
+  "from": {
+   "Comprehensive": 0.65,
+   "TPFT": 0.20,
+   "TPO": 0.15
+  }
  },
  "region_pct": {
   "Peninsular Malaysia": 0.80,
@@ -77,6 +78,7 @@
  },
 
  "claim_frequency_base": -2.35,
+ "frequency_intensity": 1.0,
  "frequency": {
   "young_adult": 0.40,
   "senior": 0.26,

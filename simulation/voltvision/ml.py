@@ -62,7 +62,7 @@ def training_history(card, cfg, base_cfg):
     world = base_cfg if base_cfg is not None else cfg
     train_cfg = deep_merge(world, card.train_dgp or {})
     train_cfg['cohort_year'] = cfg['cohort_year'] - card.train_window_years
-    vehicle = card.train_vehicle or train_cfg['vehicle_mix']
+    vehicle = card.train_vehicle or train_cfg['vehicle_ramp']['from']
     return simulate_book(train_cfg, vehicle, card.train_book_seed,
                          n_years=card.train_window_years, cache=True)
 

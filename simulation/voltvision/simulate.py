@@ -85,34 +85,31 @@ def blend_mix(start_mix, end_mix, t, order=None):
 def entrant_vehicle_mix(cfg, base_mix, year):
     """Vehicle allocation for ONE entrant cohort (new business in `year`).
 
-    No `vehicle_ramp` in cfg -> entrants keep the base mix (current behavior).
-    With `vehicle_ramp` (EV entry only, ICE = 1 - EV) the EV share is
-    interpolated linearly from `from` to `to` across the simulation window
-    (cohort_year .. cohort_year + n_years - 1); `n_years == 1` uses `from`.
+    The base mix is `vehicle_ramp.from` (or the scenario's `vehicle` override).
+    With a `to` mix the shares interpolate linearly `from` -> `to` across the
+    simulation window (cohort_year .. cohort_year + n_years - 1); `n_years == 1`
+    uses `from`. No `to` -> entrants keep the base mix.
     """
-    ramp = (cfg.get('vehicle_ramp') or {}).get('EV')
-    if not ramp:
+    ramp = cfg.get('vehicle_ramp') or {}
+    if 'to' not in ramp:
         return normalize_mix(base_mix)
-    t = ramp_progress(cfg, year)
-    return normalize_mix(blend_mix({'ICE': 1 - ramp['from'], 'EV': ramp['from']},
-                                   {'ICE': 1 - ramp['to'], 'EV': ramp['to']}, t))
+    return normalize_mix(blend_mix(base_mix, ramp['to'], ramp_progress(cfg, year),
+                                   order=list(base_mix)))
 
 
 def coverage_mix_at(cfg, year):
     """Coverage allocation for ONE cohort (inception or new business in `year`).
 
-    No `coverage_ramp` in cfg -> the template `coverage_pct` (current
-    behavior). With `coverage_ramp` the mix is interpolated linearly from
-    `from` (default `coverage_pct`) to `to` across the simulation window, using
-    the same linear ramp as `vehicle_ramp`. Iterates `coverage_pct` key order
-    so the categorical draw stream stays fixed.
+    The base mix is `coverage_ramp.from`; with a `to` mix the shares are
+    interpolated linearly across the window, using the same ramp as
+    `vehicle_ramp`. Iterates `from` key order so the categorical draw stream
+    stays fixed.
     """
     ramp = cfg.get('coverage_ramp') or {}
-    if not ramp:
-        return cfg['coverage_pct']
-    start = ramp.get('from') or cfg['coverage_pct']
-    return blend_mix(start, ramp['to'], ramp_progress(cfg, year),
-                     order=list(cfg['coverage_pct']))
+    start = ramp['from']
+    if 'to' not in ramp:
+        return start
+    return blend_mix(start, ramp['to'], ramp_progress(cfg, year), order=list(start))
 
 
 # ---------------------------------------------------------------------------
@@ -123,7 +120,7 @@ def _draw_product_mix(cfg, vehicle_pct, rng, n, coverage_mix=None):
     """Coverage, fuel type and region — three independent categorical draws."""
     df = pd.DataFrame(index=range(n))
     vehicle_mix = normalize_mix(vehicle_pct)
-    mix = cfg['coverage_pct'] if coverage_mix is None else coverage_mix
+    mix = cfg['coverage_ramp']['from'] if coverage_mix is None else coverage_mix
     df['COVERAGE_TYPE'] = rng.choice(list(mix),
                                      p=normalize_weights(mix.values()), size=n)
     df['VEHICLE_TYPE'] = rng.choice(list(vehicle_mix),
@@ -283,7 +280,7 @@ def claim_lambda(df, cfg):
     log_rate += (freq['car_age_per_year'] * df['CAR_AGE'].values
                  + freq['ncd_per_year'] * df['NCD_YEARS'].values)
     mult = df['COVERAGE_TYPE'].map(freq['coverage_multiplier']).values
-    return np.exp(log_rate) * mult
+    return np.exp(log_rate) * mult * cfg.get('frequency_intensity', 1.0)
 
 
 def loading(df, cfg):

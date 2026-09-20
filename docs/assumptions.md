@@ -14,10 +14,10 @@ pointer to `simulation/TEMPLATE.md`.
 
 | Group | Keys |
 |---|---|
-| Run controls | `n`, `cohort_year`, `n_years`, `seed`, `regimes`, `vehicle_mix`, `vehicle_ramp`, `coverage_ramp`, `flood_event_prob`, `severity_inflation`, `entrant_growth`, `sa_depreciation`, `sa_min` |
-| Book composition | `coverage_pct`, `region_pct`, `generation_pct`, `age_bands`, `gender_pct`, `car_age_median`, `car_age_sigma`, `sa_stats`, `engine_bands`, `engine_weights`, `entrant_frac` |
+| Run controls | `n`, `cohort_year`, `n_years`, `seed`, `regimes`, `vehicle_ramp`, `coverage_ramp`, `flood_event_prob`, `severity_inflation`, `entrant_growth`, `sa_depreciation`, `sa_min` |
+| Book composition | `region_pct`, `generation_pct`, `age_bands`, `gender_pct`, `car_age_median`, `car_age_sigma`, `sa_stats`, `engine_bands`, `engine_weights`, `entrant_frac` |
 | NCD | `ncd_table`, `ncd_entry` |
-| Frequency | `claim_frequency_base`, `frequency`, `risk_flags` |
+| Frequency | `claim_frequency_base`, `frequency`, `frequency_intensity`, `risk_flags` |
 | Loadings / aging | `loading`, `aging` |
 | Severity | `severity` (peril order + per-peril Gamma specs), `peril_dist`, `severity_multiplier` |
 | Telematics | `telematics`, `behavior_risk` |

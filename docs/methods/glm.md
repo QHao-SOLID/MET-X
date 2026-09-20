@@ -28,7 +28,7 @@ method learns from simulated experience.
 | `train_seed` | 7 | seed | train-split seed |
 | `train_book_seed` | 42 | seed or null | separate historical book; `null` = in-sample (comparison only) |
 | `train_window_years` | 5 | years | training horizon, one period before the priced cohort |
-| `train_vehicle` | null | share dict | training fleet mix; null = training world `vehicle_mix` |
+| `train_vehicle` | null | share dict | training fleet mix; null = training world `vehicle_ramp.from` |
 | `train_dgp` | {} | engine overrides | extra training-world assumptions |
 
 ## Training-world rule

@@ -21,19 +21,19 @@ SEEDS_PATH = ROOT / 'seeds.json'
 # Keep in sync with TEMPLATE.md.
 TEMPLATE_KEYS = [
     # run controls
-    'n', 'cohort_year', 'n_years', 'seed', 'regimes', 'vehicle_mix',
+    'n', 'cohort_year', 'n_years', 'seed', 'regimes',
     'vehicle_ramp', 'coverage_ramp', 'pricing', 'reporting',
     # claim-experience levers
     'flood_event_prob', 'severity_inflation',
     'entrant_growth', 'sa_depreciation', 'sa_min',
     # book composition
-    'coverage_pct', 'region_pct', 'generation_pct', 'age_bands', 'gender_pct',
+    'region_pct', 'generation_pct', 'age_bands', 'gender_pct',
     'car_age_median', 'car_age_sigma', 'sa_stats', 'engine_bands',
     'engine_weights', 'entrant_frac',
     # ncd
     'ncd_table', 'ncd_entry',
     # frequency
-    'claim_frequency_base', 'frequency', 'risk_flags',
+    'claim_frequency_base', 'frequency', 'frequency_intensity', 'risk_flags',
     # loadings / aging
     'loading', 'aging',
     # severity
@@ -109,6 +109,28 @@ def build_cfg(template, scenario):
     return _normalize(deep_merge(template, patch))
 
 
+def _validate_ramp(ramp, name, required_keys):
+    """Validate a ramp's `from`/`to` mix dicts against a required key set.
+
+    `from` is required (it is the base allocation); `to` is optional (absent =
+    static book). Both, when present, must be full share dicts over exactly
+    `required_keys` with weights in [0, 1].
+    """
+    if not isinstance(ramp, dict) or 'from' not in ramp:
+        raise ValueError(f'{name} requires a `from` mix (the base allocation)')
+    for key in ('from', 'to'):
+        mix = ramp.get(key)
+        if mix is None:
+            continue
+        if not isinstance(mix, dict) or set(mix) != required_keys:
+            raise ValueError(f'{name}.{key} keys {sorted(mix)} must equal '
+                             f'{sorted(required_keys)}')
+        for k, w in mix.items():
+            if not isinstance(w, (int, float)) or not 0.0 <= w <= 1.0:
+                raise ValueError(f'{name}.{key}.{k} must be a share within [0, 1] — '
+                                 f'got {w!r}')
+
+
 def validate(cfg):
     """Fail loud on inconsistent assumptions. Returns cfg for chaining."""
     # Bands: one weight per band.
@@ -122,49 +144,21 @@ def validate(cfg):
     used = {p for dist in cfg['peril_dist'].values() for p in dist}
     if used - specs:
         raise ValueError(f'peril_dist references unknown perils: {sorted(used - specs)}')
-    # Every coverage in peril_dist must exist in coverage_pct (and vice versa).
-    if set(cfg['peril_dist']) != set(cfg['coverage_pct']):
-        raise ValueError('peril_dist and coverage_pct cover different coverages')
+    # Every coverage in peril_dist must equal the base coverage mix keys.
+    cramp = cfg['coverage_ramp']
+    _validate_ramp(cramp, 'coverage_ramp', required_keys=set(cfg['peril_dist']))
+    if set(cfg['peril_dist']) != set(cramp['from']):
+        raise ValueError('peril_dist and coverage_ramp.from cover different coverages')
     # Risk flags must know every region.
     for flag, by_region in cfg['risk_flags'].items():
         missing = set(cfg['region_pct']) - set(by_region)
         if missing:
             raise ValueError(f'risk_flags.{flag} missing regions: {sorted(missing)}')
-    # Fuel stats must exist for every fuel mentioned anywhere.
-    fuels = set(cfg['vehicle_mix']) | set(cfg['sa_stats'])
-    if set(cfg['sa_stats']) != fuels:
-        raise ValueError(f'sa_stats must cover fuels {sorted(fuels)}')
-    # Vehicle ramp (optional): EV entry only, shares within [0, 1].
-    ramp = cfg.get('vehicle_ramp') or {}
-    if ramp:
-        if 'EV' not in cfg['vehicle_mix']:
-            raise ValueError('vehicle_ramp declared but no EV fuel in vehicle_mix')
-        if set(ramp) != {'EV'}:
-            raise ValueError('vehicle_ramp supports the EV entry only '
-                             "(ICE derives as 1 - EV); found " + str(sorted(ramp)))
-        for key in ('from', 'to'):
-            value = ramp['EV'].get(key)
-            if not isinstance(value, (int, float)) or not 0.0 <= value <= 1.0:
-                raise ValueError(f'vehicle_ramp.EV.{key} must be a share within [0, 1] — '
-                                 f'got {value!r}')
-    # Coverage ramp (optional): full-mix linear blend, same logic as
-    # vehicle_ramp. `from` defaults to coverage_pct; keys must match it exactly.
-    coverage_ramp = cfg.get('coverage_ramp') or {}
-    if coverage_ramp:
-        if 'to' not in coverage_ramp:
-            raise ValueError('coverage_ramp requires a `to` mix')
-        for key in ('from', 'to'):
-            mix = coverage_ramp.get(key)
-            if mix is None:
-                continue
-            if set(mix) != set(cfg['coverage_pct']):
-                raise ValueError(
-                    f'coverage_ramp.{key} keys {sorted(mix)} must equal '
-                    f'coverage_pct keys {sorted(cfg["coverage_pct"])}')
-            for name, weight in mix.items():
-                if not isinstance(weight, (int, float)) or weight < 0:
-                    raise ValueError(f'coverage_ramp.{key}.{name} must be a share >= 0 — '
-                                     f'got {weight!r}')
+    # Fuel stats must match the base vehicle mix keys.
+    vramp = cfg['vehicle_ramp']
+    _validate_ramp(vramp, 'vehicle_ramp', required_keys=set(cfg['sa_stats']))
+    if set(cfg['sa_stats']) != set(vramp['from']):
+        raise ValueError(f'sa_stats must cover fuels {sorted(vramp["from"])}')
     # Regime names are identifier-safe (used in PREM_ columns).
     from .schema import check_regime_name
     for name in cfg['regimes']:
@@ -186,6 +180,9 @@ def _validate_claim_levers(cfg):
         value = cfg.get(key, 0.0)
         if not 0.0 <= value <= hi:
             raise ValueError(f'{key} must be within [0, {hi}] — got {value!r}')
+    intensity = cfg.get('frequency_intensity', 1.0)
+    if not 0.0 <= intensity <= 5.0:
+        raise ValueError(f'frequency_intensity must be within [0, 5] — got {intensity!r}')
     if cfg.get('sa_min', 0) <= 0:
         raise ValueError('sa_min must be positive')
     for peril, spec in cfg['severity']['specs'].items():
@@ -206,7 +203,7 @@ def _validate_claim_levers(cfg):
 def describe_patch(template, scenario):
     """Plain-English diff of a scenario against the template (runner log).
 
-    Returns lines like: 'coverage_pct.TPO: 0.15 -> 0.35'. Reserved keys are
+    Returns lines like: 'coverage_ramp.to.TPO: 0.15 -> 0.35'. Reserved keys are
     listed as-is (vehicle/seed/pricing are shown by the runner separately).
     """
     lines = []

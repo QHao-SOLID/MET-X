@@ -18,9 +18,8 @@ rate cards; `pricing` below is only an optional override layer.
 | `n_years` | years | Horizon; also the window length of the out-of-sample training book. |
 | `seed` | int | Simulation RNG seed. Overridable per scenario (`"seed": 7`) and by `seeds.json`. |
 | `regimes` | list of names | Pricing methods to run (names must exist in the registry). |
-| `vehicle_mix` | share dict | Default ICE/EV split for scenarios without their own `vehicle`. Order (ICE, EV) is part of the RNG draw — keep it. |
-| `vehicle_ramp` | `{"EV": {"from": x, "to": y}}` | Foreseeable mix shift: entrant EV share interpolates linearly from `from` to `to` across the simulation window (`cohort_year` … `cohort_year + n_years − 1`); ICE = 1 − EV. Entrants only — existing policies keep their fuel type. `{}` = no ramp. |
-| `coverage_ramp` | `{"to": share dict, "from": share dict?}` | Same linear ramp for the coverage mix: entrant coverage shares move from `from` (default `coverage_pct`) to `to` across the window; sums to 1 by construction. Entrants only — existing policies keep their coverage. `{}` = no ramp. |
+| `vehicle_ramp` | `{"from": share dict, "to": share dict?}` | Base fleet mix plus optional drift. `from` is the whole-book mix (inception + entrants); `to` (optional) interpolates entrant shares linearly `from` → `to` across the window (`cohort_year` … `cohort_year + n_years − 1`). Entrants only — existing policies keep their fuel. Order (ICE, EV) is part of the RNG draw — keep it. |
+| `coverage_ramp` | `{"from": share dict, "to": share dict?}` | Same linear ramp for the coverage mix: `from` is the whole-book mix, `to` optional (absent = static book). Entrants only — existing policies keep their coverage. |
 | `flood_event_prob` | P(event year) per region | A flood loading only applies in years a region draws a flood event; the `FLOOD_RISK` flag marks exposure (still used for pricing). |
 | `severity_inflation` | fraction/yr | Claim payouts compound by `(1+r)^(SIM_YEAR − cohort_year)` (repair/medical inflation). |
 | `entrant_growth` | fraction/yr | New-business volume compounds per year: `n × entrant_frac × (1+g)^t`. |
@@ -33,7 +32,6 @@ rate cards; `pricing` below is only an optional override layer.
 
 | Key | Unit | Meaning / effect of raising |
 |---|---|---|
-| `coverage_pct` | share dict | Comprehensive / TPFT / TPO mix. More TPO lowers premium (TPO tariff underprices → tariff LR up). |
 | `region_pct` | share dict | Peninsular / East Malaysia mix. |
 | `generation_pct` | share dict | Driver generation mix. More Young Adults raises frequency. |
 | `age_bands` | [lo, hi) | Exact age span per generation band. |
@@ -57,6 +55,7 @@ rate cards; `pricing` below is only an optional override layer.
 | Key | Unit | Meaning / effect of raising |
 |---|---|---|
 | `claim_frequency_base` | log-rate | Base log frequency (−2.00 ≈ 13.5% before rating). Raise (+0.2 ≈ ×1.22 claims) to stress frequency. |
+| `frequency_intensity` | multiplier | Linear stress on the whole claim rate: `λ = λ_base × intensity` (1.10 = +10%). Default 1.0. |
 | `frequency.young_adult` / `.senior` | log add-on | Driver-band loadings. |
 | `frequency.young_male` | log add-on | Interaction for Young Adults × Male. |
 | `frequency.ev` | log add-on | EV frequency proxy. |
@@ -142,7 +141,7 @@ Reserved keys in a scenario entry:
 | Key | Meaning |
 |---|---|
 | `name` | Scenario name; used in file names and the manifest. |
-| `vehicle` | Allocation dict only: `{"ICE": 0.0, "EV": 1.0}` (EV-only) or `{"ICE": 0.6, "EV": 0.4}` (mixed). Absent → template `vehicle_mix`. Zero weights are dropped (0% behaves as absent). |
+| `vehicle` | Allocation dict only: `{"ICE": 0.0, "EV": 1.0}` (EV-only) or `{"ICE": 0.6, "EV": 0.4}` (mixed). Absent → template `vehicle_ramp.from`. Zero weights are dropped (0% behaves as absent). |
 | `seed` | Runs this scenario once with this seed (overrides `seeds.json`). |
 | `pricing` | `{regime: {param: value}}` rate-card overrides; unknown params are rejected by the method's declared card. |
 

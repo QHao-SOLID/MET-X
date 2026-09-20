@@ -10,7 +10,7 @@ inherited from the base.
 {
   "name": "demo_scenario",
   "vehicle": {"ICE": 0.6, "EV": 0.4},
-  "coverage_pct": {"Comprehensive": 0.45, "TPFT": 0.20, "TPO": 0.35},
+  "coverage_ramp": {"from": {"Comprehensive": 0.45, "TPFT": 0.20, "TPO": 0.35}},
   "pricing": {"glm": {"target_lr": 0.60}},
   "seed": 7
 }
@@ -19,7 +19,7 @@ inherited from the base.
 | Key | Meaning |
 |---|---|
 | `name` | scenario name — used in file names and the manifest |
-| `vehicle` | allocation dict only: `{"ICE": 0.0, "EV": 1.0}` (EV-only) or `{"ICE": 0.6, "EV": 0.4}` (mixed). Absent → template `vehicle_mix`. Zero weights are dropped |
+| `vehicle` | allocation dict only: `{"ICE": 0.0, "EV": 1.0}` (EV-only) or `{"ICE": 0.6, "EV": 0.4}` (mixed). Absent → template `vehicle_ramp.from`. Zero weights are dropped |
 | `seed` | run this scenario once with this seed (overrides `seeds.json`) |
 | `pricing` | `{regime: {param: value}}` rate-card overrides; unknown params are rejected by the method's declared card |
 | everything else | patches `base_template.json` (nested dicts merge) |
@@ -29,37 +29,39 @@ inherited from the base.
 `simulation/seeds.json` holds the default list:
 
 ```json
-{"seeds": [42, 67, 69]}
+{"seeds": [42, 67, 69, 7, 13, 21, 58, 91, 103, 157, 203, 299]}
 ```
 
 Every scenario runs once per seed unless it patches `seed`. Result files are
 always seed-suffixed: `shared/results/<scenario>_s<seed>.pkl`.
 
-## Vehicle mix over time
+## Mix over time
 
-`vehicle_ramp` models a foreseeable mix shift. Entrants (new business) move
-linearly across the simulation window; existing policies never change fuel type:
+The base fleet mix is `vehicle_ramp.from` (whole book). Entrants can drift
+linearly across the simulation window with `to`; existing policies never change
+fuel type:
 
 ```json
-{"name": "ev_ramp", "vehicle_ramp": {"EV": {"from": 0.10, "to": 0.40}}}
+{"name": "ev_ramp",
+ "vehicle_ramp": {"from": {"ICE": 0.96, "EV": 0.04},
+                  "to":   {"ICE": 0.80, "EV": 0.20}}}
 ```
 
-`n_years == 1` uses `from`. `{}` = off.
+`n_years == 1` uses `from`; `to` absent = static book.
 
-`coverage_ramp` is the same linear ramp for the product mix — new business
-drifts from the template `coverage_pct` (or an explicit `from`) to `to` across
-the window, while existing policies keep their coverage:
+`coverage_ramp` is the same ramp for the product mix:
 
 ```json
 {"name": "coverage_shift",
  "coverage_ramp": {"to": {"Comprehensive": 0.45, "TPFT": 0.20, "TPO": 0.35}}}
 ```
 
+`from` is inherited from the template, so a scenario only needs to patch `to`.
 Both ramps share one interpolation function (`ramp_progress` + `blend_mix` in
 `simulate.py`), so they behave identically. TPO-ward drift pressures the tariff
 loss ratio upward (TPO is underpriced — see [Analysis](analysis.md)), though the
-TPO book is noisy, so the effect varies by seed; `from` must use exactly the
-`coverage_pct` keys.
+TPO book is noisy, so the effect varies by seed. `from`/`to` keys must match the
+base mix keys exactly.
 
 ## Groups in this repo (examples — your folder may differ)
 
@@ -68,6 +70,9 @@ TPO book is noisy, so the effect varies by seed; `from` must use exactly the
 | `matrix.json` | `ICE`, `EV`, `MIX` — the three standard books; keep the names: they feed the §5b matrix table in `analysis.ipynb` |
 | `base.json` | `base` — pure template book (same as MIX) |
 | `hard_combo.json` | `combo_hard` — frequency + severity shock with repricing |
+| `frequency.json` | `freq_p10`, `freq_p20`, `freq_p25` — `frequency_intensity` 1.10 / 1.20 / 1.25 (`λ = λ_base × intensity`) |
+| `long_run.json` | `long_run_30y` (zero inflation/growth), `long_run_30y_inflated` (6% inflation) — `n_years: 30`, `n: 4000` |
+| `niche.json` | `ev_ramp_heavy`, `tpo_tsunami`, `senior_skew`, `young_male_skew`, `flood_heavy`, `theft_heavy`, `severity_shock`, `high_inflation`, `clean_book` |
 
 The runner reads **every** `*.json` in `scenarios/`; add or remove files freely.
 Other group sets used earlier in this project (`mix_coverage`) live in git

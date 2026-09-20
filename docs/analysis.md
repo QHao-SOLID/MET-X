@@ -18,6 +18,7 @@ from the `PREM_*` columns present — no hardcoded regime trio. Loader default:
 | §10 Realism vs benchmarks | scored table against `benchmarks.json` (PASS/FAIL) |
 | §11 Explainability (SHAP) | exact linear SHAP on the refit GLM and GLM+Telematics frequency models (log-rate + ×multiplier), dependence plots, per-policy waterfalls, GLM-vs-telem attribution delta, and a log-premium anatomy (freq + severity ÷ target_lr + post-model NCD + flags). Requires `pip install shap` |
 | §12 Premium evolution | portfolio mean premium by year, seed-averaged with min–max band, plus the cohort-matched smooth path (surviving cohort only) — all regimes |
+| §13 Stress-suite comparison | scenario cards (levers vs base) + outputs (LR/premium per regime, mean/p05/p95 over seeds), frequency-intensity realised-rate check, long-run NCD/LR convergence |
 
 The desk notebook (`pricing_desk.ipynb`) covers live quoting and what-ifs; the
 analysis notebook is the deep-dive. Both read the same result files the runner

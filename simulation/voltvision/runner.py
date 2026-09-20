@@ -49,19 +49,19 @@ def resolve_vehicle(vehicle, cfg):
     """Vehicle allocation for one scenario.
 
     Explicit allocation dict wins (e.g. {"ICE": 0.0, "EV": 1.0} for an
-    EV-only book); absent -> the template's vehicle_mix. Zero weights are
-    dropped, so a fuel at 0% behaves exactly like an absent fuel.
+    EV-only book); absent -> the template's `vehicle_ramp.from`. Zero weights
+    are dropped, so a fuel at 0% behaves exactly like an absent fuel.
     """
     if vehicle is None:
-        return normalize_mix(cfg['vehicle_mix'])
+        return normalize_mix(cfg['vehicle_ramp']['from'])
     if not isinstance(vehicle, dict):
         raise ValueError(
             f'vehicle must be an allocation dict, e.g. {{"ICE": 0.0, "EV": 1.0}} '
             f'or {{"ICE": 0.6, "EV": 0.4}} — got {vehicle!r}')
-    unknown = set(vehicle) - set(cfg['vehicle_mix'])
+    unknown = set(vehicle) - set(cfg['vehicle_ramp']['from'])
     if unknown:
         raise ValueError(f'vehicle has unknown fuel(s) {sorted(unknown)} — '
-                         f'known: {sorted(cfg["vehicle_mix"])}')
+                         f'known: {sorted(cfg["vehicle_ramp"]["from"])}')
     return normalize_mix(vehicle)
 
 

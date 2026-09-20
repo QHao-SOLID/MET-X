@@ -104,8 +104,9 @@ The project lives in **`simulation/`** — run everything from there:
   returns `{regime: book with FINAL_PREMIUM_SST}` so all reporting helpers work for any N.
 - Manifest entry per run: `{scenario, seed, file, saved_at, cfg, cards, metrics{regime:{lr, retained_lr, rho, avg_prem}}}`
 - Scenario reserved keys: `name`, `vehicle` (allocation dict only — `{"ICE":0.0,"EV":1.0}` for EV-only, `{"ICE":0.6,"EV":0.4}` for mixed; zero weights dropped), `seed`, `pricing`
-- `vehicle_ramp` (template/scenario key, optional): `{"EV": {"from": x, "to": y}}` — entrant EV share moves linearly across the simulation window (`cohort_year … cohort_year+n_years−1`), ICE = 1 − EV, entrants only; `{}` = off. Existing policies never change fuel type.
-- `coverage_ramp` (template/scenario key, optional): `{"to": {coverage: share}, "from": {...}?}` — same linear ramp for the coverage mix (shared `ramp_progress` + `blend_mix` in `simulate.py`); `from` defaults to `coverage_pct`, keys must match it; entrants only; `{}` = off. Demo: `scenarios/coverage_shift.json` (TPO 15%→35%).
+- `vehicle_ramp` (template/scenario key): `{"from": {fuel: share}, "to": {fuel: share}?}` — `from` is the whole-book base mix, `to` optional linear drift for entrants across the window (`cohort_year … cohort_year+n_years−1`); entrants only, existing policies never change fuel type. Key order (ICE, EV) is part of the RNG draw — keep it.
+- `frequency_intensity` (template/scenario key): linear multiplier on the whole claim rate `λ = λ_base × intensity` (default 1.0; 1.10 = +10%). Applied post-exponentiation in `claim_lambda` (`simulate.py`); training book uses the base template value, so stress shows honest LR deterioration.
+- `coverage_ramp` (template/scenario key): `{"from": {coverage: share}, "to": {coverage: share}?}` — same full-mix ramp (shared `ramp_progress` + `blend_mix` in `simulate.py`); `from` required, `to` optional; keys must match `peril_dist`. Demo: `scenarios/coverage_shift.json` (TPO 15%→35%).
 - Settlement: `severity.specs.<peril>` carries `payout` (partial/total/mixed), `total_loss_prob`, `excess`/`young_excess`; `severity_inflation`, `sa_depreciation`/`sa_min`, `entrant_growth`, `flood_event_prob` are top-level levers. No EV severity factor: EV cost differences flow through higher sums assured (total-loss and SA-linked rules). §10 in `analysis.ipynb` scores a run against `benchmarks.json` (PASS/FAIL).
 - Filenames always seed-suffixed: `<scenario>_s<seed>.pkl`. Scenario names may contain dots — build file paths by string concatenation, never `Path.with_suffix`
 
@@ -141,7 +142,7 @@ mix) intentionally produce different ML numbers since the training-world fix
 Engine-level checks (fast, re-pinned after the NCD/EV prune — old hash values
 were stale; book rows were always stable):
 - quick (n=1000, 2y, seed 20260916, 96/4 mix) rows **2014**,
-  `pd.util.hash_pandas_object(simulate_book(cfg, cfg['vehicle_mix'], 20260916, n_years=2)).sum() == 12865515199911164816`
+  `pd.util.hash_pandas_object(simulate_book(cfg, cfg['vehicle_ramp']['from'], 20260916, n_years=2)).sum() == 12865515199911164816`
 - full template (n=10000, 5y, seed 20260916, 96/4 mix) rows **54118**,
   hash `6300701653090821582`
 - training book (seed 42, cohort−5, 5y) rows **54006**, hash `6610967591617124192`

@@ -38,7 +38,7 @@ every entrant cohort). It calls these steps in order:
 
 | Step function | What it draws | Template keys |
 |---|---|---|
-| `_draw_product_mix()` | `COVERAGE_TYPE`, `VEHICLE_TYPE`, `REGION` — three categorical draws | `coverage_pct`, the scenario's vehicle mix, `region_pct` |
+| `_draw_product_mix()` | `COVERAGE_TYPE`, `VEHICLE_TYPE`, `REGION` — three categorical draws | `coverage_ramp.from`, the scenario's vehicle mix, `region_pct` |
 | `_draw_sum_assured()` | `SUM_ASSURED` per fuel type: log-normal(median, spread), rounded to RM1,000 | `sa_stats` |
 | `_draw_engine_bands()` | `ENGINE_CAPACITY` band (used by the tariff lookup) | `engine_bands`, `engine_weights` |
 | `_draw_driver_profile()` | generation band, exact `DRIVER_AGE` inside the band, `DRIVER_GENDER` | `generation_pct`, `age_bands`, `gender_pct` |
@@ -66,11 +66,13 @@ log(rate) = claim_frequency_base
           + log(BEHAVIOR_RISK)
           + car_age_per_year · CAR_AGE           (0.03)
           + ncd_per_year     · NCD_YEARS         (−0.05)
-rate = exp(log rate) × coverage_multiplier           (Comp 1.00 / TPFT 0.60 / TPO 0.45)
+rate = exp(log rate) × coverage_multiplier × frequency_intensity   (Comp 1.00 / TPFT 0.60 / TPO 0.45; intensity 1.0)
 ```
 
 All coefficients are template keys (`frequency`, `claim_frequency_base`).
-The flood term is multiplied by the year's flood-event marker (below).
+`frequency_intensity` is a linear stress multiplier on the whole rate (`λ = λ_base
+× intensity`, default 1.0). The flood term is multiplied by the year's
+flood-event marker (below).
 
 `loading()` is the tariff-style combined loading used by the tariff method:
 driver band (1.20 / 1.05 / 1.00 / 1.05) × (1 + 0.03 × min(CAR_AGE, 10)).
@@ -134,10 +136,9 @@ per-policy peril strings are joined with `/` (e.g. `AD/Theft`).
 
 Shared ramp machinery: `ramp_progress(cfg, year)` gives the linear 0→1 position
 across `cohort_year … cohort_year + n_years − 1` and `blend_mix(start, end, t)`
-does the componentwise blend, so both ramps behave identically. No ramp →
-entrants keep the base mix (`vehicle_mix` / `coverage_pct`). With a ramp,
-`vehicle_ramp` moves the EV share `from`→`to` (ICE = 1 − EV) and
-`coverage_ramp` moves the coverage shares `from` (default `coverage_pct`)→`to`.
+does the componentwise blend, so both ramps behave identically. The base mix is
+`vehicle_ramp.from` / `coverage_ramp.from` (whole book). With a `to` mix,
+entrant shares drift `from`→`to`; no `to` → entrants keep the base mix.
 Existing policies never change fuel type or coverage.
 
 ### `normalize_mix(mix)`
