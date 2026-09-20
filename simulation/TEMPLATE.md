@@ -141,6 +141,7 @@ Reserved keys in a scenario entry:
 | Key | Meaning |
 |---|---|
 | `name` | Scenario name; used in file names and the manifest. |
+| `enabled` | `false` skips the scenario (default true). Toggle to run a subset without deleting entries or passing `--scenarios`. |
 | `vehicle` | Allocation dict only: `{"ICE": 0.0, "EV": 1.0}` (EV-only) or `{"ICE": 0.6, "EV": 0.4}` (mixed). Absent → template `vehicle_ramp.from`. Zero weights are dropped (0% behaves as absent). |
 | `seed` | Runs this scenario once with this seed (overrides `seeds.json`). |
 | `pricing` | `{regime: {param: value}}` rate-card overrides; unknown params are rejected by the method's declared card. |

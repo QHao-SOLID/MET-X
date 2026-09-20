@@ -103,7 +103,7 @@ The project lives in **`simulation/`** — run everything from there:
 - Combined file: `schema.COLS` + one `PREM_<regime>` per regime. `io.books_from_result(df)`
   returns `{regime: book with FINAL_PREMIUM_SST}` so all reporting helpers work for any N.
 - Manifest entry per run: `{scenario, seed, file, saved_at, cfg, cards, metrics{regime:{lr, retained_lr, rho, avg_prem}}}`
-- Scenario reserved keys: `name`, `vehicle` (allocation dict only — `{"ICE":0.0,"EV":1.0}` for EV-only, `{"ICE":0.6,"EV":0.4}` for mixed; zero weights dropped), `seed`, `pricing`
+- Scenario reserved keys: `name`, `enabled` (`false` skips; default true), `vehicle` (allocation dict only — `{"ICE":0.0,"EV":1.0}` for EV-only, `{"ICE":0.6,"EV":0.4}` for mixed; zero weights dropped), `seed`, `pricing`
 - `vehicle_ramp` (template/scenario key): `{"from": {fuel: share}, "to": {fuel: share}?}` — `from` is the whole-book base mix, `to` optional linear drift for entrants across the window (`cohort_year … cohort_year+n_years−1`); entrants only, existing policies never change fuel type. Key order (ICE, EV) is part of the RNG draw — keep it.
 - `frequency_intensity` (template/scenario key): linear multiplier on the whole claim rate `λ = λ_base × intensity` (default 1.0; 1.10 = +10%). Applied post-exponentiation in `claim_lambda` (`simulate.py`); training book uses the base template value, so stress shows honest LR deterioration.
 - `coverage_ramp` (template/scenario key): `{"from": {coverage: share}, "to": {coverage: share}?}` — same full-mix ramp (shared `ramp_progress` + `blend_mix` in `simulate.py`); `from` required, `to` optional; keys must match `peril_dist`. Demo: `scenarios/coverage_shift.json` (TPO 15%→35%).

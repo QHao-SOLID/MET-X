@@ -102,7 +102,11 @@ def run_scenarios(grid='scenarios', template=None, scenario_names=None,
     rows = []
     for group, scenarios in load_scenario_groups(grid):
         selected = [s for s in scenarios
-                    if not scenario_names or s['name'] in scenario_names]
+                    if s.get('enabled', True) is not False
+                    and (not scenario_names or s['name'] in scenario_names)]
+        skipped = [s['name'] for s in scenarios if s.get('enabled', True) is False]
+        if verbose and skipped:
+            print(f"\n=== {group} | skip (disabled): {', '.join(skipped)}")
         if not selected:
             continue
         for scenario in selected:
