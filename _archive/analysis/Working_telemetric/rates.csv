@@ -1,0 +1,33 @@
+﻿Index,Coverage Type,Sum Insured,Region,Engine Capacity,Rate,Fixed Amount
+"Comprehensive_Peninsular Malaysia_0 to 1,400 cc / EV up to 70 kW",Comprehensive,50000,Peninsular Malaysia,"0 to 1,400 cc / EV up to 70 kW",0.039560,0.00
+"Comprehensive_Peninsular Malaysia_1,401 to 1,650 cc / EV 71 - 100 kW",Comprehensive,50000,Peninsular Malaysia,"1,401 to 1,650 cc / EV 71 - 100 kW",0.031320,0.00
+"Comprehensive_Peninsular Malaysia_1,651 - 2,200 cc / EV 101 - 125 kW",Comprehensive,50000,Peninsular Malaysia,"1,651 - 2,200 cc / EV 101 - 125 kW",0.031956,0.00
+"Comprehensive_Peninsular Malaysia_2,201 - 3,050 cc / EV 126 - 150 kW",Comprehensive,50000,Peninsular Malaysia,"2,201 - 3,050 cc / EV 126 - 150 kW",0.032592,0.00
+"Comprehensive_Peninsular Malaysia_3,051 - 4,100 cc / EV 151 - 200 kW",Comprehensive,50000,Peninsular Malaysia,"3,051 - 4,100 cc / EV 151 - 200 kW",0.033228,0.00
+"Comprehensive_Peninsular Malaysia_4,101 - 4,250 cc / EV 201 - 250 kW",Comprehensive,50000,Peninsular Malaysia,"4,101 - 4,250 cc / EV 201 - 250 kW",0.033864,0.00
+"Comprehensive_Peninsular Malaysia_4,251 - 4,400 cc / EV 251 - 300 kW",Comprehensive,50000,Peninsular Malaysia,"4,251 - 4,400 cc / EV 251 - 300 kW",0.034500,0.00
+"Comprehensive_Peninsular Malaysia_Over 4,400 cc / EV > 300 kW",Comprehensive,50000,Peninsular Malaysia,"Over 4,400 cc / EV > 300 kW",0.035136,0.00
+"Comprehensive_East Malaysia (Sabah, Sawarak & Labuan)_0 to 1,400 cc / EV up to 70 kW",Comprehensive,50000,"East Malaysia (Sabah, Sawarak & Labuan)","0 to 1,400 cc / EV up to 70 kW",0.023818,0.00
+"Comprehensive_East Malaysia (Sabah, Sawarak & Labuan)_1,401 to 1,650 cc / EV 71 - 100 kW",Comprehensive,50000,"East Malaysia (Sabah, Sawarak & Labuan)","1,401 to 1,650 cc / EV 71 - 100 kW",0.024294,0.00
+"Comprehensive_East Malaysia (Sabah, Sawarak & Labuan)_1,651 - 2,200 cc / EV 101 - 125 kW",Comprehensive,50000,"East Malaysia (Sabah, Sawarak & Labuan)","1,651 - 2,200 cc / EV 101 - 125 kW",0.024754,0.00
+"Comprehensive_East Malaysia (Sabah, Sawarak & Labuan)_2,201 - 3,050 cc / EV 126 - 150 kW",Comprehensive,50000,"East Malaysia (Sabah, Sawarak & Labuan)","2,201 - 3,050 cc / EV 126 - 150 kW",0.025214,0.00
+"Comprehensive_East Malaysia (Sabah, Sawarak & Labuan)_3,051 - 4,100 cc / EV 151 - 200 kW",Comprehensive,50000,"East Malaysia (Sabah, Sawarak & Labuan)","3,051 - 4,100 cc / EV 151 - 200 kW",0.025694,0.00
+"Comprehensive_East Malaysia (Sabah, Sawarak & Labuan)_4,101 - 4,250 cc / EV 201 - 250 kW",Comprehensive,50000,"East Malaysia (Sabah, Sawarak & Labuan)","4,101 - 4,250 cc / EV 201 - 250 kW",0.026154,0.00
+"Comprehensive_East Malaysia (Sabah, Sawarak & Labuan)_4,251 - 4,400 cc / EV 251 - 300 kW",Comprehensive,50000,"East Malaysia (Sabah, Sawarak & Labuan)","4,251 - 4,400 cc / EV 251 - 300 kW",0.026614,0.00
+"Comprehensive_East Malaysia (Sabah, Sawarak & Labuan)_Over 4,400 cc / EV > 300 kW",Comprehensive,50000,"East Malaysia (Sabah, Sawarak & Labuan)","Over 4,400 cc / EV > 300 kW",0.027074,0.00
+"TPO_Peninsular Malaysia_0 to 1,400 cc / EV up to 70 kW",TPO,0,Peninsular Malaysia,"0 to 1,400 cc / EV up to 70 kW",0.000000,120.60
+"TPO_Peninsular Malaysia_1,401 to 1,650 cc / EV 71 - 100 kW",TPO,0,Peninsular Malaysia,"1,401 to 1,650 cc / EV 71 - 100 kW",0.000000,135.00
+"TPO_Peninsular Malaysia_1,651 - 2,200 cc / EV 101 - 125 kW",TPO,0,Peninsular Malaysia,"1,651 - 2,200 cc / EV 101 - 125 kW",0.000000,151.20
+"TPO_Peninsular Malaysia_2,201 - 3,050 cc / EV 126 - 150 kW",TPO,0,Peninsular Malaysia,"2,201 - 3,050 cc / EV 126 - 150 kW",0.000000,167.40
+"TPO_Peninsular Malaysia_3,051 - 4,100 cc / EV 151 - 200 kW",TPO,0,Peninsular Malaysia,"3,051 - 4,100 cc / EV 151 - 200 kW",0.000000,181.80
+"TPO_Peninsular Malaysia_4,101 - 4,250 cc / EV 201 - 250 kW",TPO,0,Peninsular Malaysia,"4,101 - 4,250 cc / EV 201 - 250 kW",0.000000,196.20
+"TPO_Peninsular Malaysia_4,251 - 4,400 cc / EV 251 - 300 kW",TPO,0,Peninsular Malaysia,"4,251 - 4,400 cc / EV 251 - 300 kW",0.000000,212.40
+"TPO_Peninsular Malaysia_Over 4,400 cc / EV > 300 kW",TPO,0,Peninsular Malaysia,"Over 4,400 cc / EV > 300 kW",0.000000,226.80
+"TPO_East Malaysia (Sabah, Sawarak & Labuan)_0 to 1,400 cc / EV up to 70 kW",TPO,0,"East Malaysia (Sabah, Sawarak & Labuan)","0 to 1,400 cc / EV up to 70 kW",0.000000,74.40
+"TPO_East Malaysia (Sabah, Sawarak & Labuan)_1,401 to 1,650 cc / EV 71 - 100 kW",TPO,0,"East Malaysia (Sabah, Sawarak & Labuan)","1,401 to 1,650 cc / EV 71 - 100 kW",0.000000,81.60
+"TPO_East Malaysia (Sabah, Sawarak & Labuan)_1,651 - 2,200 cc / EV 101 - 125 kW",TPO,0,"East Malaysia (Sabah, Sawarak & Labuan)","1,651 - 2,200 cc / EV 101 - 125 kW",0.000000,93.60
+"TPO_East Malaysia (Sabah, Sawarak & Labuan)_2,201 - 3,050 cc / EV 126 - 150 kW",TPO,0,"East Malaysia (Sabah, Sawarak & Labuan)","2,201 - 3,050 cc / EV 126 - 150 kW",0.000000,100.80
+"TPO_East Malaysia (Sabah, Sawarak & Labuan)_3,051 - 4,100 cc / EV 151 - 200 kW",TPO,0,"East Malaysia (Sabah, Sawarak & Labuan)","3,051 - 4,100 cc / EV 151 - 200 kW",0.000000,108.00
+"TPO_East Malaysia (Sabah, Sawarak & Labuan)_4,101 - 4,250 cc / EV 201 - 250 kW",TPO,0,"East Malaysia (Sabah, Sawarak & Labuan)","4,101 - 4,250 cc / EV 201 - 250 kW",0.000000,115.20
+"TPO_East Malaysia (Sabah, Sawarak & Labuan)_4,251 - 4,400 cc / EV 251 - 300 kW",TPO,0,"East Malaysia (Sabah, Sawarak & Labuan)","4,251 - 4,400 cc / EV 251 - 300 kW",0.000000,122.40
+"TPO_East Malaysia (Sabah, Sawarak & Labuan)_Over 4,400 cc / EV > 300 kW",TPO,0,"East Malaysia (Sabah, Sawarak & Labuan)","Over 4,400 cc / EV > 300 kW",0.000000,129.60

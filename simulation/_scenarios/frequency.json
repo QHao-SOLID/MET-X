@@ -1,0 +1,6 @@
+[
+    {"name": "freq_p10", "frequency_intensity": 1.10},
+    {"name": "freq_p15", "frequency_intensity": 1.15},
+    {"name": "freq_p20", "frequency_intensity": 1.20},
+    {"name": "freq_p25", "frequency_intensity": 1.25}
+]

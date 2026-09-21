@@ -1,0 +1,116 @@
+{
+  "metadata": {
+    "compiled": "2026-08-12",
+    "purpose": "Section briefs for VoltVision Challenge 2026 manuscript",
+    "tracks": ["T1", "T2", "T3"]
+  },
+  "introduction": {
+    "background": {
+      "key_points": [
+        "Malaysia accelerating EV transition driven by policy incentives, expanding infrastructure, private investment",
+        "EV registrations doubled in 2025 (44,813 units, 5.2% TIV penetration)",
+        "Government targets: 20% EV share by 2030, 80% by 2050",
+        "ASEAN region emerging as global EV leader, Malaysia trails peers"
+      ],
+      "sources": ["REF001", "REF006", "REF035", "REF039"]
+    },
+    "problem_statement": {
+      "key_points": [
+        "Significant challenges remain: rising costs, infrastructure gaps, limited historical data, evolving risk dynamics",
+        "Insurance industry faces unique EV risks: battery cost concentration, repair complexity, total loss dynamics",
+        "Charging infrastructure at 56% of target, urban-centric distribution",
+        "Repair ecosystem immature: limited certified workshops, technician shortage"
+      ],
+      "sources": ["REF021", "REF023", "REF019", "REF041"]
+    },
+    "gap_identification": {
+      "key_points": [
+        "No Malaysian-specific EV claims frequency/severity data published",
+        "Insurance pricing uses ICE-based models with unknown adequacy",
+        "Consumer awareness of EV-specific insurance needs low (<20% flood cover)",
+        "End-of-life battery management framework still developing"
+      ],
+      "sources": ["REF023", "REF025", "REF029"]
+    }
+  },
+  "methods_rationale": {
+    "data_sources": {
+      "key_points": [
+        "JPJ registration data (official, comprehensive)",
+        "MAA industry data (member-based, excludes some brands)",
+        "PIAM industry insights (insurance-specific)",
+        "MEVnet charging infrastructure dashboard",
+        "Research house reports (Kenanga, Hong Leong, MBSB)",
+        "Academic literature (UiTM, MDPI)"
+      ],
+      "sources": ["REF001", "REF003", "REF021", "REF015", "REF004"]
+    },
+    "analytical_approach": {
+      "key_points": [
+        "Comparative analysis: Malaysia vs ASEAN peers",
+        "Trend analysis: 2021-2026 registration trajectory",
+        "Stakeholder mapping: insurers, OEMs, regulators, consumers",
+        "Risk assessment: battery, repair, infrastructure, policy"
+      ],
+      "sources": ["REF005", "REF036", "REF038"]
+    },
+    "proxy_assumptions": {
+      "key_points": [
+        "China EV data as proxy for Malaysian claims patterns (PIAM approach)",
+        "ASEAN peer data for benchmarking where local data unavailable",
+        "Reasonable assumptions clearly stated per playbook requirements"
+      ],
+      "sources": ["REF021", "REF023"]
+    }
+  },
+  "discussion": {
+    "supporting_evidence": {
+      "T1_pricing": [
+        "Battery = 30-50% of vehicle value, concentrated risk",
+        "Motor segment underwriting loss RM289.3M, combined ratio 103%",
+        "ADAS calibration costs RM5k-15k per incident",
+        "EV depreciation 6-14% faster than petrol"
+      ],
+      "T2_solutions": [
+        "76% plan EV purchase within 5 years (ASEAN-6)",
+        "Zurich Z-Driver EV Protect: RM120 add-on validated",
+        "Great Eastern GREAT EV: battery allowance, wall charger",
+        "Takaful options emerging for Shariah-compliant market"
+      ],
+      "T3_ecosystem": [
+        "Charging: 5,624 installed, DC exceeded target, AC lagging",
+        "Repair: 7/10 independent workshops decline EV work",
+        "Recycling: 870k batteries by 2050, pre-treatment only",
+        "Second-life: 30-50% cost reduction, 70-80% CO2 reduction"
+      ]
+    },
+    "conflicting_evidence": {
+      "points": [
+        "CBU tax expiry: momentum continues (Proton e.MAS 5) vs slowdown forecast",
+        "MAA vs JPJ data: true EV penetration uncertain",
+        "Battery lifespan: 8-10 years vs longer for LFP chemistry",
+        "Infrastructure: 56% achievement vs 'on-track' narrative"
+      ],
+      "implications": "Acknowledged uncertainty strengthens evidence-based approach"
+    },
+    "limitations": {
+      "points": [
+        "No published Malaysian EV claims frequency/severity data",
+        "Repair cost benchmarks not established",
+        "Consumer willingness-to-pay research limited",
+        "Second-life economics at scale unvalidated"
+      ],
+      "implications": "Research gaps identified as future work areas"
+    },
+    "future_directions": {
+      "points": [
+        "Malaysian-specific EV actuarial studies needed",
+        "Workshop certification and capacity building",
+        "Battery passport implementation and data sharing",
+        "Cross-border insurance portability for EVs",
+        "Usage-based insurance models for EVs"
+      ],
+      "implications": "Opportunities for industry-academic collaboration"
+    }
+  }
+}

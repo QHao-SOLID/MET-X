@@ -1,0 +1,229 @@
+{
+  "metadata": {
+    "compiled": "2026-08-12",
+    "total_references": 45,
+    "tracks_covered": ["T1", "T2", "T3"],
+    "playbook": "VoltVision Challenge 2026"
+  },
+  "tracks": {
+    "T1_insurance_pricing": {
+      "description": "Fair, robust, sustainable EV insurance pricing for Malaysia",
+      "core_challenge": "Limited historical claims data, battery-specific risks, geographic factors",
+      "evidence": [
+        {
+          "claim": "EV insurance premiums 10-30% higher than comparable petrol vehicles",
+          "sources": ["REF022", "REF023", "REF024"],
+          "confidence": "high",
+          "implication": "Pricing reflects real cost differential, but adequacy unknown"
+        },
+        {
+          "claim": "Battery represents 30-50% of vehicle value",
+          "sources": ["REF021", "REF023", "REF028"],
+          "confidence": "high",
+          "implication": "Concentrated value risk, total loss threshold lower for EVs"
+        },
+        {
+          "claim": "Current EV pricing uses ICE-based models with unknown adequacy",
+          "sources": ["REF023", "REF025"],
+          "confidence": "high",
+          "implication": "Actuarial data gap, need Malaysian-specific claims data"
+        },
+        {
+          "claim": "Motor segment underwriting loss RM289.3M, combined ratio 103%",
+          "sources": ["REF028"],
+          "confidence": "high",
+          "implication": "Industry-wide pricing pressure, EV exacerbates existing challenges"
+        },
+        {
+          "claim": "ADAS sensors drive up repair costs (front-end damage cascades)",
+          "sources": ["REF021", "REF028"],
+          "confidence": "high",
+          "implication": "Technology risk underpriced, calibration costs RM5k-15k per incident"
+        },
+        {
+          "claim": "EV depreciation 6-14% faster than petrol vehicles",
+          "sources": ["REF021", "REF023"],
+          "confidence": "medium",
+          "implication": "Sum insured volatility, betterment calculations complex"
+        },
+        {
+          "claim": "Geographic risk factors: flood-prone areas need separate consideration",
+          "sources": ["REF023", "REF024"],
+          "confidence": "high",
+          "implication": "Location-based pricing needed, <20% have flood cover"
+        }
+      ],
+      "data_gaps": [
+        "No published Malaysian EV claims frequency data",
+        "No severity benchmarks by damage type",
+        "Repair cost curves not established",
+        "Consumer willingness-to-pay for add-ons unknown"
+      ]
+    },
+    "T2_customer_solutions": {
+      "description": "Innovative, customer-centric insurance solutions for EV landscape",
+      "core_challenge": "New technologies, changing usage patterns, charging behaviours, evolving customer needs",
+      "evidence": [
+        {
+          "claim": "76% of ASEAN-6 respondents plan EV purchase within 5 years",
+          "sources": ["REF038"],
+          "confidence": "high",
+          "implication": "Massive addressable market for EV insurance products"
+        },
+        {
+          "claim": "Zurich Z-Driver EV Protect: RM120 add-on covers battery, charger, cable",
+          "sources": ["REF026"],
+          "confidence": "high",
+          "implication": "Affordable bundled solution, market validation"
+        },
+        {
+          "claim": "Great Eastern GREAT EV: battery replacement allowance, wall charger RM10k",
+          "sources": ["REF027"],
+          "confidence": "high",
+          "implication": "Competing products emerging, differentiation possible"
+        },
+        {
+          "claim": "<20% of EV owners have special perils (flood) add-on",
+          "sources": ["REF023"],
+          "confidence": "high",
+          "implication": "Critical coverage gap, educational opportunity"
+        },
+        {
+          "claim": "Home wallbox and charging cable not covered by standard motor policy",
+          "sources": ["REF024", "REF026"],
+          "confidence": "high",
+          "implication": "New product components needed, customer awareness low"
+        },
+        {
+          "claim": "Cross-border charging corridor exists (Singapore-Thailand)",
+          "sources": ["REF026"],
+          "confidence": "medium",
+          "implication": "Travel insurance integration opportunity"
+        },
+        {
+          "claim": "Takaful options emerging (Zurich Z-Driver Takaful)",
+          "sources": ["REF026"],
+          "confidence": "high",
+          "implication": "Shariah-compliant products needed for Malaysia market"
+        }
+      ],
+      "unmet_needs": [
+        "Flood coverage education and upselling",
+        "Home wallbox coverage standardization",
+        "Portable cable theft/loss coverage",
+        "Cross-border insurance portability",
+        "Usage-based insurance for EVs"
+      ]
+    },
+    "T3_ecosystem_resilience": {
+      "description": "Strategic solutions for long-term resilience, sustainability, scalability of Malaysia's EV ecosystem",
+      "core_challenge": "Repair costs, charging infrastructure gaps, systemic risks, coordinated risk management",
+      "evidence": [
+        {
+          "claim": "Charging infrastructure at 56% of 2025 target (5,624 of 10,000)",
+          "sources": ["REF019", "REF020"],
+          "confidence": "high",
+          "implication": "Infrastructure gap constrains adoption, regional inequality"
+        },
+        {
+          "claim": "DC fast chargers exceeded target (128%), AC chargers at 40%",
+          "sources": ["REF019"],
+          "confidence": "high",
+          "implication": "Highway coverage improving, urban/residential coverage lagging"
+        },
+        {
+          "claim": "Charger-to-vehicle ratio worsening (1:16, up from 1:13)",
+          "sources": ["REF016", "REF020"],
+          "confidence": "high",
+          "implication": "Infrastructure not keeping pace with adoption"
+        },
+        {
+          "claim": "7 of 10 independent workshops decline EV repairs",
+          "sources": ["REF041"],
+          "confidence": "medium",
+          "implication": "Repair ecosystem bottleneck, after-sales support gap"
+        },
+        {
+          "claim": "870,000 batteries need recycling by 2050",
+          "sources": ["REF029", "REF031"],
+          "confidence": "high",
+          "implication": "End-of-life management critical, pre-treatment capacity only"
+        },
+        {
+          "claim": "Malaysia only has pre-treatment capacity for battery recycling",
+          "sources": ["REF029", "REF031"],
+          "confidence": "high",
+          "implication": "Black powder exported, post-treatment infrastructure needed"
+        },
+        {
+          "claim": "MS 2818 Battery Passport launched (ASEAN first)",
+          "sources": ["REF030"],
+          "confidence": "high",
+          "implication": "Digital traceability framework established, implementation ongoing"
+        },
+        {
+          "claim": "Second-life batteries: 30-50% lower capital cost, 70-80% CO2 reduction",
+          "sources": ["REF033", "REF034"],
+          "confidence": "high",
+          "implication": "Circular economy opportunity, PV-ESS integration viable"
+        },
+        {
+          "claim": "Fuel subsidies reduce EV cost advantage for 90% of users",
+          "sources": ["REF004"],
+          "confidence": "high",
+          "implication": "Policy barrier to adoption, BUDI95 mechanism insulates consumers"
+        },
+        {
+          "claim": "Malaysia trails ASEAN peers (3-5.5% vs Singapore 45%, Thailand 18-21%)",
+          "sources": ["REF005", "REF035", "REF036", "REF037", "REF039"],
+          "confidence": "high",
+          "implication": "Competitive disadvantage, policy recalibration needed"
+        },
+        {
+          "claim": "Localization shift: CKD incentives until 2027, CBU restrictions tightening",
+          "sources": ["REF007", "REF011"],
+          "confidence": "high",
+          "implication": "Industry restructuring, supply chain localization"
+        }
+      ],
+      "structural_constraints": [
+        "Repair cost concentration (battery 30-50% of value)",
+        "Charging infrastructure urban-centric",
+        "Total loss frequency higher than ICE",
+        "Parts import dependency",
+        "EV technician shortage",
+        "Fuel subsidy dampens switching urgency"
+      ],
+      "coordination_needs": [
+        "PIAM-JPJ workshop standards",
+        "Unified charging app (PLANMalaysia)",
+        "Battery passport implementation",
+        "EPR scheme for manufacturers",
+        "Fuel subsidy reform"
+      ]
+    }
+  },
+  "cross_track_insights": {
+    "pricing_to_ecosystem": "Insurance pricing must reflect ecosystem realities: repair costs, infrastructure gaps, total loss dynamics",
+    "customer_to_pricing": "Customer demand for bundled solutions (battery, charger, flood) creates product design opportunities",
+    "ecosystem_to_customer": "Infrastructure and repair ecosystem maturity directly impacts customer experience and insurance claims",
+    "sustainability_to_pricing": "Battery lifecycle management (second-life, recycling) affects long-term insurance cost structures"
+  },
+  "manuscript_claims": {
+    "strongly_supported": [
+      "Malaysia's EV market doubled in 2025 with 44,813 registrations",
+      "Charging infrastructure at 56% of government target",
+      "EV insurance premiums 10-30% higher than ICE vehicles",
+      "Battery represents 30-50% of vehicle value",
+      "Repair ecosystem immature with limited certified workshops",
+      "870,000 batteries will need recycling by 2050",
+      "Malaysia trails regional peers in EV adoption"
+    ],
+    "conflicting_uncertain": [
+      "CBU tax expiry impact on 2026 momentum (some say continues, others predict slowdown)",
+      "True EV penetration rate (MAA vs JPJ data discrepancy)",
+      "Battery lifespan (8-10 years traditional vs longer for LFP)",
+      "Total loss frequency (anecdotal vs systematic data pending)"
+    ]
+  }
+}

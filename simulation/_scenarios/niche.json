@@ -1,0 +1,11 @@
+[
+    {"name": "ev_ramp_heavy", "vehicle_ramp": {"to": {"ICE": 0.40, "EV": 0.60}}},
+    {"name": "tpo_tsunami", "coverage_ramp": {"to": {"Comprehensive": 0.20, "TPFT": 0.20, "TPO": 0.60}}},
+    {"name": "senior_skew", "generation_pct": {"Young Adults": 0.05, "Adults": 0.20, "Mature Adults": 0.25, "Seniors": 0.50}},
+    {"name": "young_male_skew", "generation_pct": {"Young Adults": 0.70, "Adults": 0.15, "Mature Adults": 0.10, "Seniors": 0.05}, "gender_pct": {"Male": 0.75, "Female": 0.25}},
+    {"name": "flood_heavy", "flood_event_prob": {"Peninsular Malaysia": 0.80, "East Malaysia (Sabah, Sawarak & Labuan)": 0.80}},
+    {"name": "theft_heavy", "risk_flags": {"theft": {"Peninsular Malaysia": 0.90, "East Malaysia (Sabah, Sawarak & Labuan)": 1.00}}},
+    {"name": "severity_shock", "severity_multiplier": 1.50},
+    {"name": "high_inflation", "severity_inflation": 0.25},
+    {"name": "clean_book", "entrant_frac": 0.30, "retention": {"clean_delta": 0.15, "ncd3_bonus": 0.20, "ncd2_bonus": 0.12}}
+]

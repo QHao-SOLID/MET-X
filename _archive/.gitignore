@@ -1,0 +1,13 @@
+# Typst intermediate files
+*.aux
+*.log
+*.out
+*.pdf
+
+# OS‑level
+.DS_Store
+Thumbs.db
+
+# Optional: compiled exe / cached data
+*.swp
+*.un~
