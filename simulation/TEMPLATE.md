@@ -112,6 +112,11 @@ rate cards; `pricing` below is only an optional override layer.
 | `telematics.score_max` / `.score_min` / `.score_span` | score | `score = clip(score_max − blend × score_span, score_min, score_max)` (higher = safer). |
 | `behavior_risk.lo` / `.hi` | multiplier | Rank-mapped latent risk range; safest driver gets `lo`, riskiest `hi`. |
 
+The observable `telematics_score` is **EV-only** (ICE rows are `NaN`); the
+latent `BEHAVIOR_RISK` is drawn for every vehicle and still drives frequency +
+retention. The telematics method holds two models: EV (features + score) and
+ICE (GLM features).
+
 ## Retention
 
 | Key | Unit | Meaning |

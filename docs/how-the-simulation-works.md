@@ -45,11 +45,13 @@ every entrant cohort). It calls these steps in order:
 | `_draw_car_age()` | `CAR_AGE`: band median ± noise, clipped 0–10 | `car_age_median`, `car_age_sigma` |
 | `_draw_risk_flags()` | `FLOOD_RISK`, `THEFT_RISK` booleans per region; the template stores P(True), drawn as `random() > 1 − p` per region in first-appearance order | `risk_flags` |
 | `_draw_ncd_entry()` | starting `NCD_YEARS` mix → `NCD_LEVEL` tier lookup | `ncd_entry`, `ncd_table` |
-| `_draw_telematics()` | raw harsh-braking / speeding / night-share draws → blended, min-maxed, clipped score 20–100 → rank-mapped `BEHAVIOR_RISK` in [lo, hi] | `telematics`, `behavior_risk` |
+| `_draw_telematics()` | raw harsh-braking / speeding / night-share draws → blended, min-maxed, clipped score 20–100 → rank-mapped `BEHAVIOR_RISK` in [lo, hi]. The observable `telematics_score` is kept for EV only (set `NaN` for ICE); `BEHAVIOR_RISK` stays for every vehicle | `telematics`, `behavior_risk` |
 | `_make_policy_ids()` | deterministic `POLID` = prefix + year + sequence | — |
 
 `BEHAVIOR_RISK` is latent (never priced). Its observable proxy is
-`telematics_score` — the device signal used by the telematics method.
+`telematics_score` — the device signal used by the telematics method, and it is
+**EV-only** (ICE rows are `NaN`; the telematics method prices ICE with a
+no-score, GLM-shaped model).
 
 ## The claim-rate model — `claim_lambda()`
 

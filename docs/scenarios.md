@@ -68,20 +68,16 @@ base mix keys exactly.
 
 | File | Scenarios |
 |---|---|
-| `matrix.json` | `ICE`, `EV`, `MIX` — the three standard books; keep the names: they feed the §5b matrix table in `analysis.ipynb` |
-| `base.json` | `base` — pure template book (same as MIX) |
-| `hard_combo.json` | `combo_hard` — frequency + severity shock with repricing |
-| `frequency.json` | `freq_p10`, `freq_p20`, `freq_p25` — `frequency_intensity` 1.10 / 1.20 / 1.25 (`λ = λ_base × intensity`) |
-| `long_run.json` | `long_run_30y` (zero inflation/growth), `long_run_30y_inflated` (6% inflation) — `n_years: 30`, `n: 4000` |
-| `niche.json` | `ev_ramp_heavy`, `tpo_tsunami`, `senior_skew`, `young_male_skew`, `flood_heavy`, `theft_heavy`, `severity_shock`, `high_inflation`, `clean_book` |
+| `stresss_requirement.json` | `base_freq` (baseline, `frequency_intensity` 1.00) + `base_freq_p10/p15/p20/p25` (intensity 1.10–1.25) + `high_adopt_freq` / `low_adopt_freq` (EV adoption target 38% / 10% via `vehicle_ramp.to`). All also carry a `vehicle_ramp` EV drift 4%→20%. |
 
 The runner reads **every** `*.json` in `scenarios/`; add or remove files freely.
-Other group sets used earlier in this project (`mix_coverage`) live in git
-history if you want them back.
+Earlier group sets (`matrix`, `base`, `hard_combo`, `frequency`, `long_run`,
+`niche`) live in git history if you want them back.
 
-> **Matrix table requirement:** `analysis.ipynb` §5b reads `ICE`/`MIX`/`EV`
-> results at the analysis seed (default 42), so those scenarios must be run at
-> that seed. Details: [Analysis](analysis.md#5b-matrix-table-what-your-scenarios-need).
+> **Stress-ladder requirement:** `analysis.ipynb` §5b reads
+> `low_adopt_freq`/`base_freq`/`high_adopt_freq` and `base_freq_p*` at the
+> analysis seed (default 67), so those scenarios must be run at that seed.
+> Details: [Analysis](analysis.md#5b-stress-ladder-what-your-scenarios-need).
 
 ## Adding a scenario
 

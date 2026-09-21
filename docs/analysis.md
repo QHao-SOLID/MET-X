@@ -11,7 +11,7 @@ from the `PREM_*` columns present — no hardcoded regime trio. Loader default:
 | §3 Claims profile | frequency, severity, peril mix, LR by coverage (one column + grouped bars per regime) |
 | §4 Validation | model sanity checks (PASS/FAIL) + distribution tests (KS, gamma fits, Poisson dispersion) |
 | §5 Pricing comparison | N-regime scorecard + effectiveness checks (risk signals, best regime, alignment) |
-| §5b Cross-scenario table | tariff on ICE/MIX/EV, ML on EV — TPO LR, avg LR, premium bounds, avg premium |
+| §5b Cross-scenario table | stress ladder — per-regime LR + avg premium across the EV-adoption and frequency-intensity scenarios |
 | §6 Telematics tiers | premium and LR per score band, per regime |
 | §7 EV vs ICE | share, frequency, severity, LR per year (plus any vehicle ramp visible in share) |
 | §8 Seed spread | every seed of every scenario, read from `manifest.json` (no re-simulation) |
@@ -24,38 +24,26 @@ The desk notebook (`pricing_desk.ipynb`) covers live quoting and what-ifs; the
 analysis notebook is the deep-dive. Both read the same result files the runner
 produces, so numbers always reconcile with `manifest.json`.
 
-## §5b matrix table — what your scenarios need
+## §5b stress ladder — what your scenarios need
 
-The cross-scenario review table is built from **other runs on disk**, not from
-the current book. It expects scenarios named exactly `ICE`, `EV`, `MIX`,
-produced at the **same seed** as the analysis loader (`SEED_RUN`, default `67`):
+The cross-scenario table is built from **other runs on disk**, not from the
+current book. It reads the EV-adoption ladder (`low_adopt_freq` → `base_freq` →
+`high_adopt_freq`) and the frequency-intensity ladder (`base_freq_p10` …
+`base_freq_p25`) at the analysis seed (`SEED_RUN`, default `67`):
 
-| Table column | Comes from scenario | Regime |
-|---|---|---|
-| Tariff ICE ONLY | `ICE` | `tariff` |
-| Tariff EV and ICE combined | `MIX` | `tariff` |
-| Tariff EV ONLY | `EV` | `tariff` |
-| GLM EV ONLY | `EV` | `glm` |
-| GLM + Telematics EV ONLY | `EV` | `telem` |
-
-The repo ships `scenarios/matrix.json` with exactly these entries:
-
-```json
-[{"name": "ICE", "vehicle": {"ICE": 1.0}},
- {"name": "EV",  "vehicle": {"EV": 1.0}},
- {"name": "MIX"}]
-```
+| Table row | What it stresses |
+|---|---|
+| `low_adopt_freq` / `base_freq` / `high_adopt_freq` | EV adoption target 10% / 20% / 38% via `vehicle_ramp.to` |
+| `base_freq_p10` … `base_freq_p25` | `frequency_intensity` 1.10 … 1.25 |
 
 Requirements checklist:
 
-1. `simulation/scenarios/matrix.json` exists (or equivalent entries in any group file).
-2. `seeds.json` (or the scenarios' `seed` patch) includes the analysis seed
-   (`67` by default) — run: `python run_scenarios.py --scenarios ICE,EV,MIX`.
-3. Don't rename them — or edit the `pairs` list in `analysis.ipynb` §5b to
-   match your scenario names.
-
-Missing columns are listed in the cell output ("not produced by the current
-scenario set …") without failing the rest of the notebook.
+1. `simulation/scenarios/stresss_requirement.json` exists with those entries
+   (or edit the `order` list in `analysis.ipynb` §5b to match your names).
+2. `seeds.json` includes the analysis seed (`67` by default) —
+   run: `python run_scenarios.py`.
+3. Scenarios not in the manifest are silently skipped; a missing baseline prints
+   a note without failing the rest of the notebook.
 
 ## Reading the matrix — two recurring patterns
 

@@ -9,12 +9,13 @@ treatment, training setup) is shared with [GLM](glm.md).
 
 | Piece | Rule |
 |---|---|
-| Frequency | same Poisson setup as GLM, features = GLM set + `telematics_score` |
-| `telematics_score` | 0–100 simulated per policy (higher = safer); rank-mapped to the latent `BEHAVIOR_RISK`; no raw trip data needed |
+| Telematics scope | **EV-only** — device data only exists for EVs, so `telematics_score` is `NaN` for ICE. The latent `BEHAVIOR_RISK` still exists for every vehicle (and still drives frequency + the retention behaviour penalty); only the observable score is EV-only. |
+| Frequency | **two models**: EV = GLM features + `telematics_score` (trained on EV-only rows); ICE = GLM features (trained on ICE-only rows) |
+| `telematics_score` | 0–100 simulated per EV policy (higher = safer); rank-mapped to the latent `BEHAVIOR_RISK`; no raw trip data needed |
 | Severity | identical to GLM (coverage × vehicle average, coverage fallback) |
 | Premium | `freq × severity ÷ target_lr × (1 − NCD_LEVEL) × risk_step^flags` |
 | NCD | statutory post-model discount, TPO exempt — identical to GLM |
-| Training | identical out-of-sample setup as GLM (base template world) |
+| Training | identical out-of-sample setup as GLM (base template world); EV model trained on EV rows, ICE model on ICE rows |
 
 ## Declared rate card
 
@@ -30,7 +31,6 @@ Override example:
 
 ## What the score buys
 
-Portfolio loss ratio barely moves versus GLM (both calibrate to the same mean
-frequency). The score's value shows in **segmentation**: the high-risk
-telematics tier gets repriced upward, flattening loss ratios across score
-bands — see §6 of `analysis.ipynb`.
+On the EV segment, telematics reprices high-risk drivers upward and flattens
+loss ratios across score bands; ICE is priced like GLM (no device score). See
+§6 of `analysis.ipynb` (EV-only tiers).

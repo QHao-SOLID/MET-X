@@ -107,6 +107,7 @@ The project lives in **`simulation/`** — run everything from there:
 - `vehicle_ramp` (template/scenario key): `{"from": {fuel: share}, "to": {fuel: share}?}` — `from` is the whole-book base mix, `to` optional linear drift for entrants across the window (`cohort_year … cohort_year+n_years−1`); entrants only, existing policies never change fuel type. Key order (ICE, EV) is part of the RNG draw — keep it.
 - `frequency_intensity` (template/scenario key): linear multiplier on the whole claim rate `λ = λ_base × intensity` (default 1.0; 1.10 = +10%). Applied post-exponentiation in `claim_lambda` (`simulate.py`); training book uses the base template value, so stress shows honest LR deterioration.
 - `coverage_ramp` (template/scenario key): `{"from": {coverage: share}, "to": {coverage: share}?}` — same full-mix ramp (shared `ramp_progress` + `blend_mix` in `simulate.py`); `from` required, `to` optional; keys must match `peril_dist`. Demo: `scenarios/coverage_shift.json` (TPO 15%→35%).
+- Telematics is EV-only: device data only exists for EVs, so `telematics_score` is `NaN` for ICE rows (the latent `BEHAVIOR_RISK` stays for every vehicle and still drives frequency + retention behaviour penalty). The `telem` method holds TWO models: EV (`GLM features + telematics_score`, trained on EV-only rows) and ICE (`GLM features`, trained on ICE-only rows).
 - Settlement: `severity.specs.<peril>` carries `payout` (partial/total/mixed), `total_loss_prob`, `excess`/`young_excess`; `severity_inflation`, `sa_depreciation`/`sa_min`, `entrant_growth`, `flood_event_prob` are top-level levers. No EV severity factor: EV cost differences flow through higher sums assured (total-loss and SA-linked rules). §10 in `analysis.ipynb` scores a run against `benchmarks.json` (PASS/FAIL).
 - Filenames always seed-suffixed: `<scenario>_s<seed>.pkl`. Scenario names may contain dots — build file paths by string concatenation, never `Path.with_suffix`
 
@@ -139,13 +140,13 @@ Note: scenarios that patch ENGINE assumptions (frequency, severity, coverage
 mix) intentionally produce different ML numbers since the training-world fix
 (rule 4) — only the unpatched books are the gate.
 
-Engine-level checks (fast, re-pinned after the NCD/EV prune — old hash values
-were stale; book rows were always stable):
-- quick (n=1000, 2y, seed 20260916, 96/4 mix) rows **2014**,
-  `pd.util.hash_pandas_object(simulate_book(cfg, cfg['vehicle_ramp']['from'], 20260916, n_years=2)).sum() == 12865515199911164816`
-- full template (n=10000, 5y, seed 20260916, 96/4 mix) rows **54118**,
-  hash `6300701653090821582`
-- training book (seed 42, cohort−5, 5y) rows **54006**, hash `6610967591617124192`
+Engine-level checks (fast, re-pinned after the EV-only telematics change — ICE
+rows now carry `telematics_score = NaN`, so row counts + hashes shifted):
+- quick (n=1000, 2y, seed 20260916, 96/4 mix) rows **2001**,
+  `pd.util.hash_pandas_object(simulate_book(cfg, cfg['vehicle_ramp']['from'], 20260916, n_years=2)).sum() == 16068555664312492518`
+- full template (n=10000, 5y, seed 20260916, 96/4 mix) rows **52733**,
+  hash `17721295655060942842`
+- training book (seed 42, cohort−5, 5y) rows **52747**, hash `1981011297362926954`
 
 ## Practices
 
@@ -160,8 +161,8 @@ were stale; book rows were always stable):
 - Realism tooling: `benchmarks.json` + `analysis.ipynb` §10 score any run vs
   sourced industry targets (default book: 6/6 PASS)
 - Never feed pricing methods the hidden truth: `CLAIM_LAMBDA` and `BEHAVIOR_RISK` are
-  simulation labels — methods may use observable columns only (telematics_score is the
-  device proxy)
+  simulation labels — methods may use observable columns only (`telematics_score` is the
+  device proxy, and it is EV-only: ICE rows are `NaN`)
 
 ## Boundaries
 

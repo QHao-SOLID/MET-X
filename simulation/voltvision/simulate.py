@@ -218,6 +218,10 @@ def _draw_telematics(df, cfg, rng, n):
     br = cfg['behavior_risk']
     rank_pct = np.argsort(np.argsort(df['telematics_score'].values)) / (max(n - 1, 1))
     df['BEHAVIOR_RISK'] = br['hi'] - (br['hi'] - br['lo']) * rank_pct
+    # Telematics device data only exists for EVs (can't instrument ICE). The
+    # latent BEHAVIOR_RISK above stays for every vehicle; only the observable
+    # score is withheld from ICE rows.
+    df.loc[df['VEHICLE_TYPE'].values != 'EV', 'telematics_score'] = np.nan
 
 
 def _make_policy_ids(df, year, prefix, n):
