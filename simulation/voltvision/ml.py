@@ -49,7 +49,7 @@ def severity_by_row(book, sev, covsev):
                      for k in keys], float)
 
 
-def training_history(card, cfg, base_cfg):
+def training_history(card, cfg, base_cfg, vehicle=None):
     """Training dataset for the ML methods: a book from the BASE template
     world, one window earlier than the priced cohort.
 
@@ -58,11 +58,14 @@ def training_history(card, cfg, base_cfg):
     never lived through and stress tests would show fake stability at the cost
     of inflated premiums. `train_dgp` adds explicit training-world overrides;
     `train_book_seed = null` reverts to in-sample training (comparison only).
+    `vehicle` overrides the training fleet mix explicitly (e.g. an all-EV book
+    for the telematics EV model); None = card.train_vehicle → world mix.
     """
     world = base_cfg if base_cfg is not None else cfg
     train_cfg = deep_merge(world, card.train_dgp or {})
     train_cfg['cohort_year'] = cfg['cohort_year'] - card.train_window_years
-    vehicle = card.train_vehicle or train_cfg['vehicle_ramp']['from']
+    vehicle = vehicle if vehicle is not None else (
+        card.train_vehicle or train_cfg['vehicle_ramp']['from'])
     return simulate_book(train_cfg, vehicle, card.train_book_seed,
                          n_years=card.train_window_years, cache=True)
 

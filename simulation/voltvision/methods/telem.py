@@ -6,19 +6,22 @@ Telematics device data only exists for EVs (ICE cannot be instrumented), so
 the method holds TWO frequency models:
 
   EV  model : GLM features + `telematics_score` (0-100, higher = safer),
-              trained on EV-only rows.
-  ICE model : GLM features (no score), trained on ICE-only rows.
+              trained on a full-EV book (enough rows to learn the score).
+  ICE model : GLM features (no score), trained on a full-ICE book.
 
-Severity  : identical to GLM (coverage x vehicle average, coverage fallback)
+Severity  : coverage x vehicle average (coverage fallback); EV severity from
+            the EV book, ICE severity from the ICE book.
 Premium   : freq x severity / target_lr x (1 - NCD_LEVEL) x risk_step^flags
             with NCD applied AFTER the model (statutory discount, TPO exempt)
-Training  : identical out-of-sample setup as GLM (base template world)
+Training  : identical out-of-sample setup as GLM (base template world), split
+            per fuel (train_vehicle_ev / train_vehicle_ice)
 
 Scenarios may override any declared CARD parameter, e.g.
 `"pricing": {"telem": {"target_lr": 0.60}}`.
 """
 
 import numpy as np
+import pandas as pd
 
 from ..ml import encode_features, fit_frequency, severity_by_row, severity_table, training_history
 from ..pricing import register_pricer
@@ -31,7 +34,8 @@ CARD = {
     'train_seed':         {'default': 7,    'unit': 'seed',         'note': 'train-split seed'},
     'train_book_seed':    {'default': 42,   'unit': 'seed or null', 'note': 'separate historical book; null = in-sample (comparison only)'},
     'train_window_years': {'default': 5,    'unit': 'years',        'note': 'training horizon, one period before the priced cohort'},
-    'train_vehicle':      {'default': None, 'unit': 'share dict or null', 'note': 'training fleet mix; null = training world vehicle_ramp.from'},
+    'train_vehicle_ev':   {'default': {'EV': 1.0},  'unit': 'share dict', 'note': 'EV model training fleet (full-EV book)'},
+    'train_vehicle_ice':  {'default': {'ICE': 1.0}, 'unit': 'share dict', 'note': 'ICE model training fleet (full-ICE book)'},
     'train_dgp':          {'default': {},   'unit': 'engine overrides', 'note': 'extra training-world assumptions; {} = base template only'},
 }
 
@@ -47,18 +51,31 @@ FEATURES_ICE = ['DRIVER_AGE', 'CAR_AGE', 'VEHICLE_TYPE',
 def train_model(book, card, cfg, base_cfg=None):
     """Fit the EV and ICE frequency models exactly as pricing does.
 
+    Each model trains on a full-fuel book (EV model on an all-EV book, ICE
+    model on an all-ICE book) so the EV model has enough rows to learn the
+    `telematics_score` signal. Severity merges the two books (EV severity from
+    the EV book, ICE severity from the ICE book).
+
     Returns (ev_model, ice_model, sev, covsev, training_rows) — used by the
     pricer and by the SHAP explainability section in `analysis.ipynb`.
     """
-    src = training_history(card, cfg, base_cfg) if card.train_book_seed is not None else book
-    training_rows = src[src['COHORT_YEAR'] == src['SIM_YEAR']].sample(
+    if card.train_book_seed is not None:
+        ev_src = training_history(card, cfg, base_cfg, vehicle=card.train_vehicle_ev)
+        ice_src = training_history(card, cfg, base_cfg, vehicle=card.train_vehicle_ice)
+    else:
+        ev_src = book[book['VEHICLE_TYPE'] == 'EV']
+        ice_src = book[book['VEHICLE_TYPE'] == 'ICE']
+    ev_rows = ev_src[ev_src['COHORT_YEAR'] == ev_src['SIM_YEAR']].sample(
         frac=card.train_frac, random_state=card.train_seed)
-    ev_rows = training_rows[training_rows['VEHICLE_TYPE'] == 'EV']
-    ice_rows = training_rows[training_rows['VEHICLE_TYPE'] == 'ICE']
+    ice_rows = ice_src[ice_src['COHORT_YEAR'] == ice_src['SIM_YEAR']].sample(
+        frac=card.train_frac, random_state=card.train_seed)
     ev_model = fit_frequency(ev_rows, FEATURES_EV, card.glm_alpha)
     ice_model = fit_frequency(ice_rows, FEATURES_ICE, card.glm_alpha)
-    sev, covsev = severity_table(src)
-    return ev_model, ice_model, sev, covsev, training_rows
+    sev_ev, covsev_ev = severity_table(ev_src)
+    sev_ice, covsev_ice = severity_table(ice_src)
+    sev = {**sev_ev, **sev_ice}
+    covsev = {c: (covsev_ev[c] + covsev_ice[c]) / 2 for c in covsev_ev}
+    return ev_model, ice_model, sev, covsev, pd.concat([ev_rows, ice_rows])
 
 
 def price_telem(book, card, cfg, base_cfg=None):
