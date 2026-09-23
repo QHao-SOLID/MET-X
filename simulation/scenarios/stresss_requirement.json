@@ -1,10 +1,13 @@
 [
-    {"name": "base_freq", "enabled": true, "vehicle_ramp": {"from": {"ICE": 0.96, "EV": 0.04}, "to": {"ICE": 0.80, "EV": 0.20}}, "frequency_intensity": 1.00},
-    {"name": "base_freq_p10", "enabled": true, "vehicle_ramp": {"from": {"ICE": 0.96, "EV": 0.04}, "to": {"ICE": 0.80, "EV": 0.20}}, "frequency_intensity": 1.10},
-    {"name": "base_freq_p15", "enabled": true, "vehicle_ramp": {"from": {"ICE": 0.96, "EV": 0.04}, "to": {"ICE": 0.80, "EV": 0.20}}, "frequency_intensity": 1.15},
-    {"name": "base_freq_p20", "enabled": true, "vehicle_ramp": {"from": {"ICE": 0.96, "EV": 0.04}, "to": {"ICE": 0.80, "EV": 0.20}}, "frequency_intensity": 1.20},
-    {"name": "base_freq_p25", "enabled": true, "vehicle_ramp": {"from": {"ICE": 0.96, "EV": 0.04}, "to": {"ICE": 0.80, "EV": 0.20}}, "frequency_intensity": 1.25},
+    {"name": "base_freq", "enabled": false, "vehicle_ramp": {"from": {"ICE": 0.96, "EV": 0.04}, "to": {"ICE": 0.80, "EV": 0.20}}, "frequency_intensity": 1.00},
+    {"name": "base_freq_p10", "enabled": false, "vehicle_ramp": {"from": {"ICE": 0.96, "EV": 0.04}, "to": {"ICE": 0.80, "EV": 0.20}}, "frequency_intensity": 1.10},
+    {"name": "base_freq_p15", "enabled": false, "vehicle_ramp": {"from": {"ICE": 0.96, "EV": 0.04}, "to": {"ICE": 0.80, "EV": 0.20}}, "frequency_intensity": 1.15},
+    {"name": "base_freq_p20", "enabled": false, "vehicle_ramp": {"from": {"ICE": 0.96, "EV": 0.04}, "to": {"ICE": 0.80, "EV": 0.20}}, "frequency_intensity": 1.20},
+    {"name": "base_freq_p25", "enabled": false, "vehicle_ramp": {"from": {"ICE": 0.96, "EV": 0.04}, "to": {"ICE": 0.80, "EV": 0.20}}, "frequency_intensity": 1.25},
 
-    {"name": "high_adopt_freq", "enabled": true, "vehicle_ramp": {"from": {"ICE": 0.96, "EV": 0.04}, "to": {"ICE": 0.62, "EV": 0.38}}, "frequency_intensity": 1.00},
-    {"name": "low_adopt_freq", "enabled": true, "vehicle_ramp": {"from": {"ICE": 0.96, "EV": 0.04}, "to": {"ICE": 0.90, "EV": 0.10}}, "frequency_intensity": 1.00}
+    {"name": "high_adopt_freq", "enabled": false, "vehicle_ramp": {"from": {"ICE": 0.96, "EV": 0.04}, "to": {"ICE": 0.62, "EV": 0.38}}, "frequency_intensity": 1.00},
+    {"name": "low_adopt_freq", "enabled": false, "vehicle_ramp": {"from": {"ICE": 0.96, "EV": 0.04}, "to": {"ICE": 0.90, "EV": 0.10}}, "frequency_intensity": 1.00},
+
+    {"name": "base", "enabled": false},
+    {"name": "long_run_30y", "enabled": true, "n_years": 30, "severity_inflation": 0.0, "entrant_growth": 0.0, "n": 4000}
 ]

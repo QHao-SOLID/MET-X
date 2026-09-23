@@ -9,6 +9,5 @@ __pycache__/
 site/
 
 # Generated simulation artifacts (regenerate with run_scenarios.py)
-simulation/shared/results/
 simulation/VoltVision_*.xlsx
 simulation/~$*.xlsx

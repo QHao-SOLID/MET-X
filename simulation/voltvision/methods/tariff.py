@@ -78,16 +78,20 @@ def price_tariff(book, card, cfg, base_cfg=None):
     ncd = 1 - out['NCD_LEVEL'].values
     flags = out['FLOOD_RISK'].values.astype(int) + out['THEFT_RISK'].values.astype(int)
     risk = card.risk_step ** flags
-    prem = base * loading(out, cfg) * ncd * risk * (1 + card.sst)
+    # prem = base * loading(out, cfg) * ncd * risk * (1 + card.sst)
+    prem = base * loading(out, cfg) * ncd * (1 + card.sst)
     tpo = out['COVERAGE_TYPE'].values == 'TPO'
-    prem[tpo] = ((base[tpo] + card.tpo_sa_pct * out['SUM_ASSURED'].values[tpo])
-                 * card.tpo_loading * risk[tpo] * (1 + card.sst))
+    # prem[tpo] = ((base[tpo])
+    #              * card.tpo_loading * risk[tpo] * (1 + card.sst))
+    prem[tpo] = ((base[tpo]) * card.tpo_loading * (1 + card.sst))
     return out.assign(FINAL_PREMIUM_SST=prem.round(2))
 
 
 register_pricer('tariff', price_tariff, card=CARD, info={
     'label': 'Tariff',
     'color': '#94a3b8',
-    'formula': ('Comp/TPFT = BASIC x loading x (1-NCD) x risk_step^flags x (1+sst); '
-                'TPO = (BASIC + tpo_sa_pct x SA) x tpo_loading x risk_step^flags x (1+sst)'),
+    # 'formula': ('Comp/TPFT = BASIC x loading x (1-NCD) x (1+sst); '
+    #            'TPO = (BASIC + tpo_sa_pct x SA) x (1+sst)'),
+    'formula': ('Comp/TPFT = BASIC x loading x (1-NCD) x (1+sst); '
+                'TPO = (BASIC + tpo_sa_pct x SA) x (1+sst)'),
 })
